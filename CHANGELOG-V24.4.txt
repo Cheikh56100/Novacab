@@ -1,0 +1,13 @@
+NOVACAB V24.4
+- Super Admin: nouvelle vue d'ensemble par portefeuille/cabinet.
+- Sélecteur de portefeuille dans la vue Super Admin.
+- Nouvelle page « Gestion manuelle des bilans » réservée au Super Admin.
+- Choix du portefeuille et de l'exercice.
+- Modification individuelle du statut Terminé/Restant.
+- Boutons globaux « Tout marquer comme terminé » et « Tout marquer comme restant ».
+
+2026-09-03 — V12.2
+- Corrigé le crash React `ReferenceError: motion is not defined` dans les composants refactorisés utilisant Framer Motion.
+- Ajout des imports `motion` manquants dans Reveal, AccountMenu, InfoHint, AuthPage et ClientsRegistry.
+- Déclaré la courbe d'easing `EASE` utilisée par Reveal et AuthPage.
+- Le Dashboard conserve l'import direct de `BUCKET_LABELS` depuis `services/deadlines`.
