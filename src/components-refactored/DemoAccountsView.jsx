@@ -7,6 +7,25 @@ import { Panel } from "./Panel.jsx";
 import { Shared } from "./shared.js";
 const { T } = Shared;
 const { useState } = React;
+const authLabelStyle = {
+  display: "block",
+  fontSize: 12,
+  fontWeight: 600,
+  color: T?.muted || "#64748b",
+  marginBottom: 6,
+};
+
+const authInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "11px 12px",
+  borderRadius: 10,
+  border: "1px solid #d9dee8",
+  background: "#fff",
+  color: "#111827",
+  outline: "none",
+  fontSize: 14,
+};
 
 
 

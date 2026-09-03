@@ -9,6 +9,42 @@ import { Shared } from "./shared.js";
 const { T, S, supabase } = Shared;
 const { useState } = React;
 const EASE = [0.22, 1, 0.36, 1];
+const authLabelStyle = {
+  display: "block",
+  fontSize: 12,
+  fontWeight: 600,
+  color: T?.muted || "#64748b",
+  marginBottom: 6,
+};
+
+const authInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "11px 12px",
+  borderRadius: 10,
+  border: "1px solid #d9dee8",
+  background: "#fff",
+  color: "#111827",
+  outline: "none",
+  fontSize: 14,
+};
+
+const authIconStyle = {
+  position: "absolute",
+  left: 12,
+  top: "50%",
+  transform: "translateY(-50%)",
+  color: "#94a3b8",
+};
+
+const authLinkStyle = {
+  border: 0,
+  background: "transparent",
+  color: "#2563eb",
+  cursor: "pointer",
+  padding: 0,
+  fontSize: 12,
+};
 
 const authLabelStyle = {
   display: "block",
