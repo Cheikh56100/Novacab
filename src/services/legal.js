@@ -1,0 +1,8 @@
+import { supabase } from "../supabaseClient";
+const TABLE="legal_requests", KEY="axe-legal-requests";
+const local=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch{return[]}}; const save=x=>{try{localStorage.setItem(KEY,JSON.stringify(x))}catch{}};
+export async function fetchLegalRequests({portefeuilleId}={}){let q=supabase.from(TABLE).select("*").order("created_at",{ascending:false});if(portefeuilleId)q=q.eq("portefeuille_id",portefeuilleId);const {data,error}=await q;if(!error)return data||[];return local()}
+export async function createLegalRequest(r){const row={id:r.id||crypto.randomUUID(),...r,created_at:r.created_at||new Date().toISOString()};const {data,error}=await supabase.from(TABLE).insert(row).select().single();if(!error)return data;save([row,...local()]);return row}
+export async function updateLegalRequest(id,patch){const {data,error}=await supabase.from(TABLE).update(patch).eq("id",id).select().single();if(!error)return data;const rows=local().map(r=>r.id===id?{...r,...patch}:r);save(rows);return rows.find(r=>r.id===id)||null}
+export async function deleteLegalRequest(id){const {error}=await supabase.from(TABLE).delete().eq("id",id);if(!error)return true;save(local().filter(r=>r.id!==id));return true}
+export async function migrateLocalLegalRequests({portefeuilleId,createdBy}={}){const rows=local();let migrated=0;for(const r of rows){const row={...r,portefeuille_id:r.portefeuille_id||portefeuilleId||null,created_by:r.created_by||createdBy||null};const {error}=await supabase.from(TABLE).upsert(row,{onConflict:"id"});if(!error)migrated++}if(migrated===rows.length)save([]);return {migrated,remaining:rows.length-migrated}}

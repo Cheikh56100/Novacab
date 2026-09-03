@@ -1,0 +1,22 @@
+import { Check, Plus } from "lucide-react";
+import React from "react";
+import * as Core from "./core.js";
+const { buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetchSecteurNews, loadSecteurContentFromSupabase, upsertSecteurContentRemote, getFormeJuridiqueItems, normalizeText, classifyNaf, classifyActivite, currentMonthKey, previousMonthKey, migrateClients, effectiveTvaStatus, tvaTone, tvaStatusLabel, computeFiscalEvents, computeEcheanceAlerts, taskBucket, loadClientsFromSupabase, insertClientRemote, updateClientRemote, deleteClientRemote, invokeDemoFunction, ensureCurrentUserTeamRemote, loadTeamFromSupabase, loadMyContractStatusRemote, acceptMyCabinetContractRemote, insertTeamMemberRemote, updateTeamMemberRemote, deleteTeamMemberRemote, loadPortefeuillesFromSupabase, insertPortefeuilleRemote, archivePortefeuilleRemote, deletePortefeuilleRemote, loadNotificationsFromSupabase, insertNotificationRemote, markNotificationReadRemote, loadOrganismesSociauxRemote, insertOrganismeSocialRemote, updateOrganismeSocialRemote, deleteOrganismeSocialRemote, loadCollaboratorProfileRemote, upsertCollaboratorProfileRemote, formatMailAmount, buildNovacabMail, isTvaLate, seuilEffectifAlert, missionCompletion, isBilanLate, computeCounts, filterByRole, filterClients, buildDistribution, inferLegalForm, inferCategorieFiscale, toneColors, uid, downloadOrganismesTemplate, odCycle, odTone, odLabel, bankCycle, bankTone, bankLabel, isBtpClient, cotisationTypesFor, planningBucket, icsEscape, icsDateTime, icsDateTimePlusMinutes, buildPlanningICS, exportPlanningToICS } = Core;
+import { Panel } from "./Panel.jsx";
+import { EmptyNote } from "./EmptyNote.jsx";
+import { ClientTicketForm } from "./ClientTicketForm.jsx";
+import { Shared } from "./shared.js";
+const { T } = Shared;
+const { useState } = React;
+
+
+function ClientTicketsTab({client,tasks,team,onCreate,onUpdate,onComplete,portefeuilleId}){
+ const [show,setShow]=useState(false); const clientTasks=(tasks||[]).filter(t=>String(t.client_id)===String(client.id));
+ const active=clientTasks.filter(t=>!['termine','archive'].includes(String(t.statut||''))); const done=clientTasks.filter(t=>String(t.statut)==='termine');
+ return <div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div><div style={{fontWeight:800,color:T.navy,fontSize:15}}>Tickets du dossier</div><div style={{fontSize:11,color:T.inkMuted}}>{active.length} en cours · {done.length} terminés</div></div><button onClick={()=>setShow(!show)} className="btn-primary"><Plus size={14}/> Nouveau ticket</button></div>
+ {show&&<ClientTicketForm client={client} team={team} portefeuilleId={portefeuilleId} onCancel={()=>setShow(false)} onSubmit={async p=>{await onCreate?.(p);setShow(false)}}/>}
+ <Panel title={`À faire / en cours (${active.length})`}>{active.length?active.map(t=><div key={t.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 2px",borderBottom:`1px solid ${T.line}`}}><div style={{flex:1}}><b style={{fontSize:12.5}}>{t.nom}</b><div style={{fontSize:10.5,color:T.inkMuted}}>{t.date_echeance||'Sans échéance'} · {(team||[]).find(x=>x.id===t.responsable_id)?.nom||'Non assigné'} · {t.priorite||'normale'}</div>{t.commentaire&&<div style={{fontSize:11,color:T.inkSoft,marginTop:3}}>{t.commentaire}</div>}</div><select value={t.statut||'a_faire'} onChange={e=>onUpdate?.(t.id,{statut:e.target.value})} className="input-field" style={{width:110}}><option value="a_faire">À faire</option><option value="en_cours">En cours</option><option value="en_attente">En attente</option></select><button onClick={()=>onComplete?.(t)} className="btn-secondary" title="Terminer"><Check size={14}/></button></div>):<EmptyNote text="Aucun ticket actif pour ce dossier."/>}</Panel>
+ <div style={{height:14}}/><Panel title={`Historique des tâches terminées (${done.length})`}>{done.length?done.sort((a,b)=>String(b.date_realisation||b.updated_at).localeCompare(String(a.date_realisation||a.updated_at))).map(t=><div key={t.id} style={{padding:"9px 2px",borderBottom:`1px solid ${T.line}`,fontSize:12}}><Check size={13} color={T.green} style={{display:'inline',verticalAlign:'middle',marginRight:6}}/><b>{t.nom}</b><span style={{color:T.inkMuted,fontSize:10.5}}> · terminé le {t.date_realisation||'—'}</span></div>):<EmptyNote text="L'historique apparaîtra ici lorsque des tickets seront terminés."/>}</Panel></div>
+}
+
+export { ClientTicketsTab };

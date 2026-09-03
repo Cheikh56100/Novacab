@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-app: #f6f8fc;
+    --color-card: #ffffff;
+    --color-line: #d8e0ec;
+    --color-ink: #172033;
+    --color-inksoft: #334155;
+    --color-inkmuted: #7b8ba5;
+    --color-accent: #17345f;
+    --color-accent-deep: #10294b;
+    --color-accent-soft: #eaf0f8;
+    --color-paper-deep: #f1f5f9;
+    --color-shadow: rgba(15, 23, 42, .10);
+    --color-sidebar: #ffffff;
+    --color-sidebar-2: #f3f6fb;
+    --color-sidebar-ink: #17345f;
+    --color-sidebar-muted: #7183a0;
+    --color-sidebar-active: #eaf0f8;
+    --color-sidebar-border: #d8e0ec;
+    --badge-green-bg: #eaf7ef;
+    --badge-green-text: #16824b;
+    --badge-red-bg: #fff0f0;
+    --badge-red-text: #d92d20;
+    --badge-purple-bg: #f2edff;
+    --badge-purple-text: #6941c6;
+    --badge-amber-bg: #fff7e6;
+    --badge-amber-text: #b54708;
+    --badge-slate-bg: #f1f5f9;
+    --badge-slate-text: #475569;
+    --badge-blue-bg: #eaf0f8;
+    --badge-blue-text: #17345f;
+  }
+  html { font-family: Inter, "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; }
+  body { margin: 0; min-width: 320px; background: var(--color-app); color: var(--color-ink); }
+  button, input, select, textarea { font: inherit; }
+  button { cursor: pointer; }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border bg-card shadow-card;
+    border-color: var(--color-line);
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition;
+    border-color: var(--color-line);
+    background: #fff;
+    color: var(--color-ink);
+  }
+  .btn:hover { background: #f8fafc; }
+  .btn:disabled { cursor: not-allowed; opacity: .55; }
+  .btn-primary {
+    @apply btn text-white;
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+  }
+  .btn-primary:hover { background: var(--color-accent-deep); }
+  .btn-secondary { @apply btn; }
+  .input-field {
+    @apply w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none transition;
+    border-color: var(--color-line);
+  }
+  .input-field:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(23,52,95,.10); }
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold; }
+  .badge-blue { background: var(--badge-blue-bg); color: var(--badge-blue-text); }
+  .badge-green { background: var(--badge-green-bg); color: var(--badge-green-text); }
+  .badge-red { background: var(--badge-red-bg); color: var(--badge-red-text); }
+  .badge-purple { background: var(--badge-purple-bg); color: var(--badge-purple-text); }
+  .badge-amber { background: var(--badge-amber-bg); color: var(--badge-amber-text); }
+  .badge-slate { background: var(--badge-slate-bg); color: var(--badge-slate-text); }
+  .hoverRow:hover { background: #f8fafc; }
+  .nav-item { display:flex; align-items:center; gap:.65rem; min-height:36px; padding:.45rem .65rem; border:0; border-radius:9px; background:transparent; color:#334155; font-size:12px; font-weight:600; }
+  .nav-item:hover { background:#f3f6fb; color:#17345f; }
+  .nav-item-active { background:#eaf0f8; color:#17345f; font-weight:800; }
+  .nav-item-active svg { color:#17345f; }
+  .novacab-mail-grid { min-width:0; }
+  .novacab-welcome { position:relative; overflow:hidden; display:flex; align-items:center; justify-content:space-between; gap:24px; padding:22px 24px; margin-bottom:18px; border:1px solid var(--color-line); border-radius:16px; background:linear-gradient(135deg,#fff 0%,#f7f9fd 100%); box-shadow:0 8px 24px -18px var(--color-shadow); }
+  .novacab-welcome-glow { position:absolute; width:260px; height:260px; right:-80px; top:-120px; border-radius:50%; background:rgba(23,52,95,.06); pointer-events:none; }
+  .novacab-welcome-main { position:relative; min-width:0; z-index:1; }
+  .novacab-welcome-kicker { display:flex; align-items:center; gap:6px; color:#17345f; font-size:10.5px; font-weight:800; margin-bottom:7px; }
+  .novacab-welcome h1 { margin:0; color:#172033; font-size:24px; line-height:1.2; letter-spacing:-.02em; font-weight:800; }
+  .novacab-welcome p { max-width:760px; margin:6px 0 14px; color:#7183a0; font-size:11.5px; line-height:1.55; }
+  .novacab-welcome-actions { display:flex; gap:7px; flex-wrap:wrap; }
+  .novacab-welcome-actions button { display:inline-flex; align-items:center; gap:6px; border-radius:9px; padding:8px 11px; font-size:11px; font-weight:800; cursor:pointer; }
+  .novacab-welcome-primary { border:1px solid #17345f; background:#17345f; color:#fff; }
+  .novacab-welcome-secondary { border:1px solid #d8e0ec; background:#fff; color:#17345f; }
+  .novacab-welcome-ghost { border:1px solid transparent; background:transparent; color:#17345f; }
+  .novacab-welcome-summary { position:relative; z-index:1; flex:0 0 auto; display:grid; grid-template-columns:auto auto auto auto; align-items:center; gap:13px; padding:13px 15px; border:1px solid #d8e0ec; border-radius:13px; background:#fff; }
+  .novacab-welcome-summary-icon { width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:9px; background:#17345f; color:#fff; }
+  .novacab-welcome-summary-value { color:#17345f; font-size:20px; font-weight:800; line-height:1; }
+  .novacab-welcome-summary-label { color:#7183a0; font-size:9.5px; margin-top:3px; white-space:nowrap; }
+  .novacab-welcome-summary-divider { width:1px; height:30px; background:#d8e0ec; }
+  @media (max-width: 900px) { .novacab-welcome { align-items:flex-start; flex-direction:column; } .novacab-welcome-summary { width:100%; grid-template-columns:auto 1fr auto 1fr; } }
+  @media (max-width: 560px) { .novacab-welcome { padding:17px; } .novacab-welcome h1 { font-size:20px; } .novacab-welcome-summary { grid-template-columns:auto 1fr; } .novacab-welcome-summary-divider { display:none; } }
+  .clickable { cursor: pointer; }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+}
+
+/* ============================================================
+   THÈME SOMBRE NOVACAB — les variables sont pilotées par App.jsx
+   ============================================================ */
+.dark {
+  --color-app: #0b1220;
+  --color-card: #111b2d;
+  --color-line: #263650;
+  --color-ink: #edf3fb;
+  --color-inksoft: #c8d4e6;
+  --color-inkmuted: #8ea1bd;
+  --color-accent: #5f8fd6;
+  --color-accent-deep: #7aa7e8;
+  --color-accent-soft: #172a48;
+  --color-paper-deep: #162238;
+  --color-shadow: rgba(0,0,0,.35);
+  --color-sidebar: #0a1425;
+  --color-sidebar-2: #101c30;
+  --color-sidebar-ink: #e7eef9;
+  --color-sidebar-muted: #91a5c1;
+  --color-sidebar-active: #17345f;
+  --color-sidebar-border: #263650;
+  --badge-green-bg: #103323;
+  --badge-green-text: #6ee7a8;
+  --badge-red-bg: #3b171a;
+  --badge-red-text: #ff8c86;
+  --badge-purple-bg: #2b2146;
+  --badge-purple-text: #c7b3ff;
+  --badge-amber-bg: #3a2b12;
+  --badge-amber-text: #ffc66d;
+  --badge-slate-bg: #1b293d;
+  --badge-slate-text: #c2cede;
+  --badge-blue-bg: #172f52;
+  --badge-blue-text: #8db7f2;
+}
+.dark body { background: var(--color-app); color: var(--color-ink); }
+.dark .btn, .dark .input-field { background: var(--color-card); color: var(--color-ink); }
+.dark .btn:hover, .dark .hoverRow:hover { background: #17243a; }
+.dark .nav-item { color: var(--color-inksoft); }
+.dark .nav-item:hover { background: #13233b; color: #fff; }
+.dark .nav-item-active { background: var(--color-sidebar-active); color: #fff; }
+.dark select, .dark option, .dark textarea, .dark input { background: var(--color-card); color: var(--color-ink); }
+.dark .card { background: var(--color-card); }
+.dark .table th, .dark .table td { border-color: var(--color-line); }
+.dark .novacab-welcome { background: linear-gradient(135deg,#111b2d 0%,#0e1829 100%); }
+
+/* Hiérarchie de navigation : rubriques principales fortes, sous-rubriques discrètes. */
+.nav-group-title { font-size: 11.5px !important; font-weight: 800 !important; letter-spacing: .06em !important; }
+.nav-subgroup-title { font-size: 10px !important; font-weight: 500 !important; letter-spacing: .03em !important; text-transform: none !important; }
+.nav-item { font-size: 11.5px !important; font-weight: 500 !important; }
+.nav-item-active { font-weight: 700 !important; }
