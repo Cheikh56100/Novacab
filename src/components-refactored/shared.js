@@ -9,7 +9,6 @@ import * as SecurityAudit from "../services/securityAudit";
 import * as ActivityService from "../services/activity";
 import * as DeadlineService from "../services/deadlines";
 import * as PermissionService from "../services/permissions";
-import * as FinancialService from "../services/financialAnalysis";
 import * as Annual from "../services/annual";
 import * as DateUtils from "../utils/dateUtils";
 import * as ExcelUtils from "../utils/excelUtils";
@@ -39,7 +38,6 @@ export const Shared = {
   ...ActivityService,
   ...DeadlineService,
   ...PermissionService,
-  ...FinancialService,
   ...Annual,
   ...DateUtils,
   ...ExcelUtils,
