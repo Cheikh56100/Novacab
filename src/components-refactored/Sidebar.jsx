@@ -32,6 +32,7 @@ function Sidebar({ view, setView, me, meRole, mePortefeuille, team, onLogout, co
         { id: "super-audit", label: "Journal d’audit", icon: ShieldCheck, roles: SUPER_ADMIN_ONLY },
         { id: "super-tech", label: "État technique", icon: Settings2, roles: SUPER_ADMIN_ONLY },
         { id: "super-abonnements", label: "Abonnements", icon: Receipt, roles: SUPER_ADMIN_ONLY },
+        { id: "admin-collaborateurs", label: "Portefeuilles collaborateurs", icon: Users, roles: SUPER_ADMIN_ONLY },
         { id: "demo", label: "Comptes démo", icon: Eye, roles: SUPER_ADMIN_ONLY },
       ],
     },

@@ -10,6 +10,47 @@ const { T, S, supabase } = Shared;
 const { useState } = React;
 const EASE = [0.22, 1, 0.36, 1];
 
+const authLabelStyle = {
+  display: "block",
+  fontSize: 12,
+  fontWeight: 600,
+  color: T.inkMuted,
+  marginBottom: 6,
+};
+
+const authInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "11px 12px 11px 40px",
+  borderRadius: 10,
+  border: `1px solid ${T.line}`,
+  background: T.card,
+  color: T.ink,
+  outline: "none",
+  fontSize: 14,
+  position: "relative",
+  zIndex: 1,
+};
+
+const authIconStyle = {
+  position: "absolute",
+  left: 12,
+  top: "50%",
+  transform: "translateY(-50%)",
+  color: T.inkMuted,
+  zIndex: 0,
+  pointerEvents: "none",
+};
+
+const authLinkStyle = {
+  border: 0,
+  background: "transparent",
+  color: T.accent || "#2563eb",
+  cursor: "pointer",
+  padding: 0,
+  fontSize: 12,
+};
+
 
 
 /* ============================================================
