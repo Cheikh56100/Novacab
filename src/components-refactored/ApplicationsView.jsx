@@ -2,16 +2,17 @@ import { ExternalLink, Landmark, BarChart3, ArrowUpRight } from "lucide-react";
 import React from "react";
 import { Panel } from "./Panel.jsx";
 import { Shared } from "./shared.js";
-const { T } = Shared;
+const { T, supabase } = Shared;
 
 const OFX_BRIDGE_URL = "https://ofx-bridge.netlify.app/";
 // Le second logiciel sera branché sans modifier l'interface :
 // définir VITE_FINANCIAL_ANALYSIS_URL dans l'environnement Netlify/Vite.
-const FINANCIAL_ANALYSIS_URL = import.meta.env.VITE_FINANCIAL_ANALYSIS_URL || "";
+const FINANCIAL_ANALYSIS_URL = import.meta.env.VITE_FINANCIAL_ANALYSIS_URL || "https://novacabfi.netlify.app/";
 
-function AppCard({ icon: Icon, title, description, url, available = true, tone = "navy" }) {
+function AppCard({ icon: Icon, title, description, url, available = true, tone = "navy", onOpen }) {
   const open = () => {
     if (!url) return;
+    if (onOpen) return onOpen();
     window.open(url, "_blank", "noopener,noreferrer");
   };
   return (
@@ -38,7 +39,29 @@ function AppCard({ icon: Icon, title, description, url, available = true, tone =
   );
 }
 
-function ApplicationsView() {
+function ApplicationsView({ session, activeClient }) {
+  const [openingNfi, setOpeningNfi] = React.useState(false);
+  const [nfiError, setNfiError] = React.useState("");
+  const openNfi = async () => {
+    if (!FINANCIAL_ANALYSIS_URL || openingNfi) return;
+    setOpeningNfi(true); setNfiError("");
+    try {
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error("Session NOVACAB introuvable.");
+      const { data, error } = await supabase.functions.invoke("nfi-sso-handoff", {
+        body: { action: "create" },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (error) throw error;
+      if (!data?.code) throw new Error("Impossible de préparer la connexion sécurisée.");
+      const url = new URL(FINANCIAL_ANALYSIS_URL);
+      if (activeClient?.id) url.searchParams.set("client", activeClient.id);
+      if (activeClient?.siren) url.searchParams.set("siren", String(activeClient.siren).replace(/\D/g, "").slice(0,9));
+      url.searchParams.set("nfi_handoff", data.code);
+      window.open(url.toString(), "_blank", "noopener,noreferrer");
+    } catch (e) { setNfiError(e?.message || "Impossible d'ouvrir NFI."); }
+    finally { setOpeningNfi(false); }
+  };
   return (
     <div className="max-w-6xl mx-auto">
       <div style={{ marginBottom: 18 }}>
@@ -64,8 +87,10 @@ function ApplicationsView() {
             url={FINANCIAL_ANALYSIS_URL}
             available={!!FINANCIAL_ANALYSIS_URL}
             tone="paper"
+            onOpen={openNfi}
           />
         </div>
+        {nfiError && <div style={{ marginTop: 12, padding: 10, borderRadius: 10, background: "#FFF7ED", color: "#9A3412", fontSize: 10.5 }}>{nfiError}</div>}
         {!FINANCIAL_ANALYSIS_URL && (
           <div style={{ marginTop: 12, padding: 10, borderRadius: 10, background: T.paper, color: T.inkMuted, fontSize: 10.5, lineHeight: 1.5 }}>
             Le module est déjà prêt. Il suffit de renseigner <b style={{ color: T.ink }}>VITE_FINANCIAL_ANALYSIS_URL</b> avec l'URL du logiciel d'analyse financière pour activer le bouton.

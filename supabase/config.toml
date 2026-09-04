@@ -2,3 +2,6 @@ project_id = "ybewryneaksqhtlagvxk"
 
 [functions.novacab-demo]
 verify_jwt = false
+
+[functions.nfi-sso-handoff]
+verify_jwt = false

@@ -886,7 +886,7 @@ onImport={importClients} onAddClient={addClient} />
               {view === "super-demandes" && isSuperAdmin && <LegalServicesView clients={clients} requests={legalRequests} onCreate={handleCreateLegal} onUpdate={handleUpdateLegal} onDelete={handleDeleteLegal} />}
               {view === "prestations-juridiques" && <LegalServicesView clients={myClients} requests={legalRequests} onCreate={handleCreateLegal} onUpdate={handleUpdateLegal} onDelete={handleDeleteLegal} />}
               {view === "age" && <AgeAgoView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} />}
-              {view === "applications" && <ApplicationsView />}
+              {view === "applications" && <ApplicationsView session={session} activeClient={activeClient} />}
               {view === "revision" && (
   <RevisionView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} setView={navTo} />
 )}
