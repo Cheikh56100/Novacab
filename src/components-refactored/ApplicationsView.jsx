@@ -23,7 +23,7 @@ function AppCard({ icon: Icon, title, description, url, available = true, tone =
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 800, color: T.ink }}>{title}</div>
-          <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{available ? "Application externe" : "Lien à configurer"}</div>
+          <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{available ? "Intégrée à NOVACAB" : "Lien à configurer"}</div>
         </div>
       </div>
       <div style={{ flex: 1, fontSize: 11.5, color: T.inkMuted, lineHeight: 1.55 }}>{description}</div>
@@ -39,28 +39,12 @@ function AppCard({ icon: Icon, title, description, url, available = true, tone =
   );
 }
 
-function ApplicationsView({ session, activeClient }) {
-  const [openingNfi, setOpeningNfi] = React.useState(false);
+function ApplicationsView({ session, activeClient, onOpenNfi }) {
   const [nfiError, setNfiError] = React.useState("");
-  const openNfi = async () => {
-    if (!FINANCIAL_ANALYSIS_URL || openingNfi) return;
-    setOpeningNfi(true); setNfiError("");
-    try {
-      const accessToken = session?.access_token;
-      if (!accessToken) throw new Error("Session NOVACAB introuvable.");
-      const { data, error } = await supabase.functions.invoke("nfi-sso-handoff", {
-        body: { action: "create" },
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (error) throw error;
-      if (!data?.code) throw new Error("Impossible de préparer la connexion sécurisée.");
-      const url = new URL(FINANCIAL_ANALYSIS_URL);
-      if (activeClient?.id) url.searchParams.set("client", activeClient.id);
-      if (activeClient?.siren) url.searchParams.set("siren", String(activeClient.siren).replace(/\D/g, "").slice(0,9));
-      url.searchParams.set("nfi_handoff", data.code);
-      window.open(url.toString(), "_blank", "noopener,noreferrer");
-    } catch (e) { setNfiError(e?.message || "Impossible d'ouvrir NFI."); }
-    finally { setOpeningNfi(false); }
+  const openNfi = () => {
+    setNfiError("");
+    if (onOpenNfi) return onOpenNfi();
+    setNfiError("Le module NFI intégré n'est pas disponible.");
   };
   return (
     <div className="max-w-6xl mx-auto">
@@ -68,7 +52,7 @@ function ApplicationsView({ session, activeClient }) {
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800, color: T.navy }}>Cabinet & outils</div>
         <h1 style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 800, color: T.ink, margin: "4px 0 5px" }}>Applications</h1>
         <p style={{ fontSize: 11.5, color: T.inkMuted, margin: 0, lineHeight: 1.55 }}>
-          Accédez directement aux applications spécialisées utilisées par le cabinet, sans mélanger leurs interfaces avec NOVACAB.
+          Accédez aux outils spécialisés directement depuis votre cabinet NOVACAB.
         </p>
       </div>
 
@@ -85,21 +69,17 @@ function ApplicationsView({ session, activeClient }) {
             title="Analyse financière"
             description="Logiciel dédié à l'analyse financière. NOVACAB sert de point d'accès et l'analyse détaillée est réalisée dans cette application spécialisée."
             url={FINANCIAL_ANALYSIS_URL}
-            available={!!FINANCIAL_ANALYSIS_URL}
+            available={true}
             tone="paper"
             onOpen={openNfi}
           />
         </div>
         {nfiError && <div style={{ marginTop: 12, padding: 10, borderRadius: 10, background: "#FFF7ED", color: "#9A3412", fontSize: 10.5 }}>{nfiError}</div>}
-        {!FINANCIAL_ANALYSIS_URL && (
-          <div style={{ marginTop: 12, padding: 10, borderRadius: 10, background: T.paper, color: T.inkMuted, fontSize: 10.5, lineHeight: 1.5 }}>
-            Le module est déjà prêt. Il suffit de renseigner <b style={{ color: T.ink }}>VITE_FINANCIAL_ANALYSIS_URL</b> avec l'URL du logiciel d'analyse financière pour activer le bouton.
-          </div>
-        )}
+
       </Panel>
 
       <div style={{ marginTop: 12, fontSize: 10.5, color: T.inkMuted, display: "flex", alignItems: "center", gap: 6 }}>
-        <ExternalLink size={13} /> Les applications s'ouvrent dans un nouvel onglet et restent indépendantes de NOVACAB.
+        <ExternalLink size={13} /> Les outils spécialisés restent accessibles depuis NOVACAB.
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ const { TvaAutomation, buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetch
 import { CollaboratorSpaceView } from "./CollaboratorSpaceView.jsx";
 import { MailTypesView } from "./MailTypesView.jsx";
 import { ApplicationsView } from "./ApplicationsView.jsx";
+import NfiEmbedded from "../nfi/NfiEmbedded.jsx";
 import { SaveToast } from "./SaveToast.jsx";
 import { HoldingsView } from "./HoldingsView.jsx";
 import { GlobalStyle } from "./GlobalStyle.jsx";
@@ -886,7 +887,8 @@ onImport={importClients} onAddClient={addClient} />
               {view === "super-demandes" && isSuperAdmin && <LegalServicesView clients={clients} requests={legalRequests} onCreate={handleCreateLegal} onUpdate={handleUpdateLegal} onDelete={handleDeleteLegal} />}
               {view === "prestations-juridiques" && <LegalServicesView clients={myClients} requests={legalRequests} onCreate={handleCreateLegal} onUpdate={handleUpdateLegal} onDelete={handleDeleteLegal} />}
               {view === "age" && <AgeAgoView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} />}
-              {view === "applications" && <ApplicationsView session={session} activeClient={activeClient} />}
+              {view === "applications" && <ApplicationsView session={session} activeClient={activeClient} onOpenNfi={() => navTo("nfi")} />}
+              {view === "nfi" && <NfiEmbedded session={session} activeClient={activeClient} onExit={() => navTo("applications")} />}
               {view === "revision" && (
   <RevisionView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} setView={navTo} />
 )}
