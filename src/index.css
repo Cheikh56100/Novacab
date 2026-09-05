@@ -151,3 +151,52 @@
 .nav-subgroup-title { font-size: 10px !important; font-weight: 500 !important; letter-spacing: .03em !important; text-transform: none !important; }
 .nav-item { font-size: 11.5px !important; font-weight: 500 !important; }
 .nav-item-active { font-weight: 700 !important; }
+
+/* ============================================================
+   NOVACAB — contraste sombre renforcé
+   Les textes restent nettement lisibles sur les surfaces foncées.
+   ============================================================ */
+.dark body { color: #f4f7fb; }
+.dark .text-ink, .dark .text-inksoft { color: #f4f7fb !important; }
+.dark .text-inkmuted { color: #aebbd0 !important; }
+.dark .text-slate-500, .dark .text-slate-600, .dark .text-gray-500, .dark .text-gray-600 { color: #b9c6d8 !important; }
+.dark .bg-white, .dark .bg-card { background: var(--color-card) !important; }
+.dark .border-line { border-color: var(--color-line) !important; }
+.dark .bg-app { background: var(--color-app) !important; }
+.dark .bg-paper-deep { background: var(--color-paper-deep) !important; }
+.dark .card, .dark [class*="bg-white"].border { border-color: var(--color-line); }
+.dark input::placeholder, .dark textarea::placeholder { color: #8292aa !important; opacity: 1; }
+.dark input, .dark textarea, .dark select { color: #f4f7fb !important; background: #111b2d !important; border-color: #2b3b55 !important; }
+.dark option { background: #111b2d; color: #f4f7fb; }
+.dark table th { color: #fff !important; }
+.dark table td { color: #dce6f2 !important; border-color: #2b3b55 !important; }
+.dark .nav-item { color: #cbd6e5 !important; }
+.dark .nav-item:hover { color: #fff !important; }
+.dark .nav-item-active { color: #fff !important; }
+.dark .novacab-welcome h1, .dark .novacab-welcome-kicker, .dark .novacab-welcome-summary-value { color: #f7f9fc !important; }
+.dark .novacab-welcome p, .dark .novacab-welcome-summary-label { color: #b9c6d8 !important; }
+.dark .novacab-welcome { border-color: #2b3b55; }
+.dark .novacab-welcome-summary { background: #111b2d; border-color: #2b3b55; }
+.dark .novacab-welcome-secondary { background: #111b2d; color: #f4f7fb; border-color: #2b3b55; }
+.dark .novacab-welcome-ghost { color: #8db7f2; }
+.dark .novacab-welcome-glow { background: rgba(85,181,255,.08); }
+
+/* NOVACAB — contraste renforcé dans la sidebar en mode sombre */
+.dark .nav-item,
+.dark .nav-group-title,
+.dark .nav-subgroup-title { color: #f4f7fb !important; }
+.dark .nav-item:hover,
+.dark .nav-item-active { color: #ffffff !important; }
+.dark aside,
+.dark [class*="sidebar"] { color: #f4f7fb; }
+
+/* NOVACAB final readability lock */
+.dark .nav-item,
+.dark .nav-group-title,
+.dark .nav-subgroup-title{color:#f7f9fc!important}
+.dark .nav-item:hover,.dark .nav-item-active{color:#fff!important}
+.dark aside,.dark aside *{--tw-text-opacity:1}
+.dark .text-inkmuted,.dark .text-slate-500,.dark .text-slate-600,.dark .text-gray-500,.dark .text-gray-600{color:#c4d0df!important}
+.dark .nav-subgroup-title{color:#d7e1ed!important}
+.dark .nav-group-title{color:#f7f9fc!important}
+.dark .nav-item-active{background:#17345f!important}

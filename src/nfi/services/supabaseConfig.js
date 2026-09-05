@@ -1,2 +1,0 @@
-export const supabaseConfig = () => ({ url: import.meta.env.VITE_SUPABASE_URL || "", anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || "", configured: true, architecture: "NOVACAB_SUPABASE_SHARED" });
-export const nfiTables = { novacabClients:"clients", novacabTeam:"team", exercises:"nfi_exercises", fecImports:"nfi_fec_imports", confidentialAccess:"nfi_confidential_access", analyses:"nfi_financial_analyses", forecasts:"nfi_forecasts", benchmarks:"nfi_market_benchmarks" };
