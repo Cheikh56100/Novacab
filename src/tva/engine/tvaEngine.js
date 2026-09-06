@@ -1,3 +1,4 @@
+import { detectAccountType, equivalentLegacyAccount } from './accountNormalizer.js';
 export const TVA_RATES = [20, 10, 5.5, 2.1];
 export const OPERATION_TYPES = ['standard','autoliquidation_btp','acquisition_ue','service_ue','importation','exportation','exonere','hors_champ','non_recuperable','immobilisation','avoir','regularisation'];
 
@@ -18,7 +19,15 @@ export function normalizeRow(row,sourceFile='',meta={}){
   const date=rawDate instanceof Date&&!Number.isNaN(rawDate.getTime())?`${String(rawDate.getDate()).padStart(2,'0')}/${String(rawDate.getMonth()+1).padStart(2,'0')}/${rawDate.getFullYear()}`:norm(rawDate);
   return {sourceFile,journal:norm(meta.journalCode||get('Journal','Code journal','Code du journal')),bankName:norm(meta.bankName||''),date,account,label:norm(get('Intitulé','Libellé écriture','Libellé','Libelle','Libellé compte','label')),piece:norm(get('Pièce','Pièce1','Pièce2','N° pièce','Numéro de pièce','piece')),debit:num(get('Débit','Dèbit','Debit','debit')),credit:num(get('Crédit','Credit','credit')),raw:row};
 }
-export function filterTvaRows(rows){const kept=[],ignored=[];for(const r of rows){if(/^401/.test(r.account)||/^411/.test(r.account))kept.push({...r,accountType:r.account.startsWith('401')?'401':'411'});else ignored.push(r)}return{kept,ignored};}
+export function filterTvaRows(rows){
+  const kept=[],ignored=[];
+  for(const r of rows){
+    const accountType=detectAccountType(r.account);
+    if(accountType)kept.push({...r,accountType});
+    else ignored.push(r);
+  }
+  return{kept,ignored};
+}
 export function makeKey(r){return[r.journal,r.date,r.account,r.piece,r.debit,r.credit,r.label].join('|').toLowerCase()}
 export function detectDuplicates(rows){const seen=new Map(),dups=[];rows.forEach((r,i)=>{const k=makeKey(r);if(seen.has(k))dups.push({...r,duplicateOf:seen.get(k),rowIndex:i});else seen.set(k,i)});return dups}
 export function inferOperation(r,rule={}){
@@ -33,8 +42,24 @@ export function inferOperation(r,rule={}){
   }
   return op;
 }
+// CORRECTIF AUDIT (avoirs / notes de crédit) : un compte 411 (client) et
+// un compte 401 (fournisseur) ont des sens comptables opposés. Prendre la
+// valeur absolue de (débit - crédit) faisait disparaître ce sens : une
+// facture et son avoir intégral (même montant, sens inversé) étaient tous
+// les deux comptés positivement au lieu que le second annule le premier.
+// signedAmount() restitue ce sens : positif pour un encaissement/achat
+// normal, négatif pour un avoir/remboursement, afin que summarize() les
+// compense correctement au lieu de les additionner.
+export function signedAmount(r){
+  // r.accountType est normalement posé par filterTvaRows() ; on retombe sur
+  // le préfixe du compte si la ligne nous arrive sans être passée par là,
+  // pour ne jamais se tromper de sens silencieusement.
+  const type=r.accountType||detectAccountType(r.account);
+  if(!type)return 0;
+  return type==='411' ? (r.credit-r.debit) : (r.debit-r.credit);
+}
 export function inferAmounts(r,rule){
-  const gross=Math.abs(r.debit-r.credit);
+  const gross=signedAmount(r);
   const rate=Number(rule?.default_tva_rate??rule?.rate??0);
   const mixed=Boolean(rule?.is_mixed??rule?.mixed);
   const operationType=inferOperation(r,rule);
@@ -94,7 +119,9 @@ export function buildPreparation(rows,rules={},keywordRules=[]){
   };
 
   return rows.map(r=>{
-    const accountRule=rules[r.account]||rules[r.account?.replace(/^0+/,'')]||rules[normalizeAccount(r.account)];
+    const normalizedAccount=normalizeAccount(r.account);
+    const legacyAccount=equivalentLegacyAccount(normalizedAccount);
+    const accountRule=rules[r.account]||rules[normalizedAccount]||(legacyAccount?rules[legacyAccount]:null);
     const kw=findKeyword(r);
     // A keyword rule is more specific than a generic account rule.
     // An account rule marked MIXED remains a safe fallback when no keyword matches.

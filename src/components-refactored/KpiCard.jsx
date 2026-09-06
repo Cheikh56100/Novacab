@@ -12,7 +12,15 @@ function KpiCard({ label, value, icon: Icon, tone, onClick, index = 0, linkLabel
   const toneSoft = tone === "red" ? T.redSoft : tone === "amber" ? T.amberSoft : tone === "green" ? T.greenSoft : T.navySoft;
   return (
     <Reveal index={index}>
-      <div onClick={onClick} className={onClick ? "clickable" : ""} style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radiusLg, boxShadow: T.shadowSm, padding: "22px 24px" }}>
+      <div
+        onClick={onClick}
+        onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        aria-label={onClick ? `${label} — voir le détail` : undefined}
+        className={onClick ? "clickable kpi-card-interactive" : ""}
+        style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radiusLg, boxShadow: T.shadowSm, padding: "22px 24px" }}
+      >
         <div style={{ marginBottom: 14, width: 38, height: 38, borderRadius: 10, background: toneColor, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon size={18} color="#FFFFFF" strokeWidth={2} /></div>
         <div style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 800, color: T.ink, lineHeight: 1 }}>{value}</div>
         <div style={{ fontSize: 12.5, color: T.inkMuted, marginTop: 8, fontWeight: 500 }}>{label}</div>

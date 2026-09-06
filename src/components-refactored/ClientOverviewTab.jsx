@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock3, FileText, Mail, MessageSquare, Ticket, UserRound } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, FileText, MessageSquare, Ticket, UserRound, Wallet, Landmark, Box } from "lucide-react";
 import { Panel } from "./Panel.jsx";
 import { EmptyNote } from "./EmptyNote.jsx";
 import { Shared } from "./shared.js";
@@ -10,7 +10,7 @@ function fmtDate(value) {
   try { return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value.includes("T") ? value : `${value}T12:00:00`)); } catch { return value; }
 }
 
-function ClientOverviewTab({ client, tasks = [], team = [], onOpenTab }) {
+function ClientOverviewTab({ client, tasks = [], team = [], onOpenTab, isAdmin = false, onUpdate }) {
   const [activities, setActivities] = useState([]);
   useEffect(() => {
     let cancelled = false;
@@ -24,6 +24,11 @@ function ClientOverviewTab({ client, tasks = [], team = [], onOpenTab }) {
   const clientTasks = tasks.filter((t) => String(t.client_id) === String(client.id) && String(t.statut || "").toLowerCase() !== "archive");
   const openTasks = clientTasks.filter((t) => String(t.statut || "").toLowerCase() !== "termine");
   const explicitAccess = Array.isArray(client.accesDossier) ? client.accesDossier.length : 0;
+  const finance = client.finance || {};
+  const honoraires = client.honoraires && typeof client.honoraires === "object" ? Number(client.honoraires.montant || client.honoraires.annuels || 0) : Number(client.honorairesAnnuels || client.honoraires || 0);
+  const adminTools = client.administration?.tools || {};
+  const patchFinance = (patch) => onUpdate?.(client.id, { finance: { ...finance, ...patch } });
+  const patchAdminTools = (patch) => onUpdate?.(client.id, { administration: { ...(client.administration || {}), tools: { ...adminTools, ...patch } } });
 
   const timeline = useMemo(() => {
     const meetingEvents = meetings.map((m) => ({ id: `meeting-${m.id}`, date: m.createdAt || m.date, type: "meeting", title: m.objet || "Rendez-vous", text: `Compte-rendu du ${fmtDate(m.date)}`, icon: CalendarDays }));
@@ -39,6 +44,28 @@ function ClientOverviewTab({ client, tasks = [], team = [], onOpenTab }) {
           <div key={label} className="card p-4"><Icon size={15} style={{ color: T.navy, marginBottom: 7 }} /><div style={{ fontSize: 18, fontWeight: 850, color: T.ink }}>{value}</div><div style={{ fontSize: 10.5, color: T.inkMuted }}>{label}</div></div>
         ))}
       </div>
+      <Panel title="Finance & administration">
+        <div className="grid md:grid-cols-2 gap-3">
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3"><Wallet size={15} style={{color:T.navy}}/><b style={{fontSize:12}}>Budget & honoraires</b></div>
+            <div className="grid grid-cols-2 gap-3 text-[10.5px]">
+              <div><div style={{color:T.inkMuted}}>Budget</div>{isAdmin ? <input className="w-full border rounded-lg px-2 py-1 mt-1" type="number" value={Number(finance.budget||0)} onChange={e=>patchFinance({budget:Number(e.target.value||0)})}/> : <b>{Number(finance.budget||0).toLocaleString("fr-FR")} €</b>}</div>
+              <div><div style={{color:T.inkMuted}}>Honoraires annuels</div>{isAdmin ? <input className="w-full border rounded-lg px-2 py-1 mt-1" type="number" value={honoraires} onChange={e=>onUpdate?.(client.id,{honoraires:{...(client.honoraires&&typeof client.honoraires==="object"?client.honoraires:{}),montant:Number(e.target.value||0)},honorairesAnnuels:Number(e.target.value||0)})}/> : <b>{honoraires.toLocaleString("fr-FR")} €</b>}</div>
+              <div><div style={{color:T.inkMuted}}>Échéance paiement</div>{isAdmin ? <input className="w-full border rounded-lg px-2 py-1 mt-1" type="date" value={finance.echeancePaiement||""} onChange={e=>patchFinance({echeancePaiement:e.target.value})}/> : <b>{fmtDate(finance.echeancePaiement)}</b>}</div>
+              <div><div style={{color:T.inkMuted}}>Révisions budget</div><b>{Array.isArray(finance.budgetHistory)?finance.budgetHistory.length:0}</b></div>
+            </div>
+          </div>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 mb-3"><Landmark size={15} style={{color:T.navy}}/><b style={{fontSize:12}}>EBICS & Box</b></div>
+            <div className="grid grid-cols-2 gap-3 text-[10.5px]">
+              <div><div style={{color:T.inkMuted}}>EBICS</div>{isAdmin ? <select className="w-full border rounded-lg px-2 py-1 mt-1" value={adminTools.ebics||"a_installer"} onChange={e=>patchAdminTools({ebics:e.target.value})}><option value="a_installer">À installer</option><option value="en_cours">En cours</option><option value="installe">Installé</option><option value="supprime">Supprimé</option></select> : <b>{adminTools.ebics||"—"}</b>}</div>
+              <div><div style={{color:T.inkMuted}}>Coût EBICS / mois</div>{isAdmin ? <input className="w-full border rounded-lg px-2 py-1 mt-1" type="number" value={Number(adminTools.ebicsCost||0)} onChange={e=>patchAdminTools({ebicsCost:Number(e.target.value||0)})}/> : <b>{Number(adminTools.ebicsCost||0).toLocaleString("fr-FR")} €</b>}</div>
+              <div><div style={{color:T.inkMuted}}>Box</div>{isAdmin ? <select className="w-full border rounded-lg px-2 py-1 mt-1" value={adminTools.box||"active"} onChange={e=>patchAdminTools({box:e.target.value})}><option value="active">Active</option><option value="a_resilier">À résilier</option><option value="resiliee">Résiliée</option></select> : <b>{adminTools.box||"—"}</b>}</div>
+              <div><div style={{color:T.inkMuted}}>Coût Box / mois</div>{isAdmin ? <input className="w-full border rounded-lg px-2 py-1 mt-1" type="number" value={Number(adminTools.boxCost||0)} onChange={e=>patchAdminTools({boxCost:Number(e.target.value||0)})}/> : <b>{Number(adminTools.boxCost||0).toLocaleString("fr-FR")} €</b>}</div>
+            </div>
+          </div>
+        </div>
+      </Panel>
       <Panel title="Fil de vie du dossier">
         <div style={{ fontSize: 11, color: T.inkMuted, marginBottom: 12 }}>Réunions, actions, documents et événements sont regroupés ici pour retrouver rapidement ce qui s'est passé sur le dossier.</div>
         {timeline.length === 0 ? <EmptyNote text="Aucune activité enregistrée pour ce dossier pour l'instant." /> : (

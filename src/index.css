@@ -200,3 +200,86 @@
 .dark .nav-subgroup-title{color:#d7e1ed!important}
 .dark .nav-group-title{color:#f7f9fc!important}
 .dark .nav-item-active{background:#17345f!important}
+
+/* Finition UX — planning : conserver toutes les informations, mais éviter
+   qu'elles se compressent ou débordent sur les écrans étroits. */
+.planning-layout { width: 100%; }
+.planning-header { min-width: 0; }
+.planning-actions { flex-wrap: wrap; justify-content: flex-end; }
+.planning-layout > * { min-width: 0; }
+
+@media (max-width: 980px) {
+  .planning-layout { grid-template-columns: 1fr !important; }
+  .planning-layout > :first-child { order: 1; }
+  .planning-layout > :last-child { order: 2; }
+}
+
+@media (max-width: 640px) {
+  .planning-actions { width: 100%; justify-content: flex-start; }
+  .planning-actions > * { flex: 0 0 auto; }
+}
+
+/* Finition UX — clavier : les actions restent repérables sans modifier leur
+   hiérarchie visuelle. */
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--color-accent-deep, #315a8a);
+  outline-offset: 2px;
+}
+
+/* Finition UX — cartes KPI interactives : même comportement visuel, meilleure accessibilité clavier. */
+.kpi-card-interactive:focus-visible { outline: 2px solid var(--color-accent-deep, #315a8a); outline-offset: 3px; }
+
+/* Finition UX — en-têtes de panneaux : conserver le titre lisible sans écraser l'action associée. */
+@media (max-width: 640px) {
+  .card .shrink-0 { max-width: 48%; }
+}
+
+/* ============================================================
+   NOVACAB — finition générale : lisibilité sans perte de contenu
+   ============================================================ */
+
+/* Les tableaux restent riches : sur petit écran ils défilent au lieu de
+   réduire les colonnes jusqu'à devenir illisibles. */
+.table-scroll, .overflow-x-auto { scrollbar-width: thin; }
+.table-scroll { width: 100%; overflow-x: auto; overflow-y: visible; }
+.table-scroll > table { min-width: 640px; }
+
+/* Hiérarchie douce : le contenu important ressort sans multiplier les blocs. */
+.page-title { line-height: 1.2; letter-spacing: -.015em; }
+.section-title { line-height: 1.3; }
+
+/* Focus clavier homogène dans toute l'application. */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent-deep);
+  outline-offset: 2px;
+}
+
+/* Les actions longues ne cassent pas les en-têtes. */
+.novacab-toolbar { min-width: 0; }
+.novacab-toolbar > * { min-width: 0; }
+.novacab-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Évite les débordements horizontaux accidentels dans les cartes. */
+.card, .panel, main, section { min-width: 0; }
+.card img, .panel img { max-width: 100%; height: auto; }
+
+@media (max-width: 720px) {
+  .table-scroll > table { min-width: 580px; }
+  .novacab-toolbar-actions { width: 100%; }
+  .novacab-toolbar-actions > button,
+  .novacab-toolbar-actions > a { flex: 1 1 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}

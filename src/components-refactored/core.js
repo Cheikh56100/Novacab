@@ -21,6 +21,7 @@ import { runAutomation } from "../services/automation";
 import { fetchLegalRequests, createLegalRequest, updateLegalRequest, deleteLegalRequest, migrateLocalLegalRequests } from "../services/legal";
 import { filterEditablePatch } from "../services/permissions";
 import { loadOrganismesSociaux, insertOrganismeSocial, updateOrganismeSocial, deleteOrganismeSocial } from "../services/socialAccess";
+import { fetchProductNotifications, insertProductNotification, markProductNotificationRead } from "../services/notifications";
 const TvaAutomation = lazy(() => import("../tva/TvaAutomation"));
 
 const PALETTE = ["#17345F", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2", "#DB2777", "#4F46E5"];
@@ -129,8 +130,15 @@ const MOIS_ORDER = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juil
 const QUARTER_END_MONTHS = ["Mars", "Juin", "Septembre", "Décembre"];
 const MOIS_FULL = MOIS_ORDER;
 const BTP_NAF_PREFIXES = ["41", "42", "43"];
-const COTISATION_TYPES = ["URSSAF", "Retraite", "Prévoyance"];
-const COTISATION_TYPES_BTP = ["PRO BTP", "CIBTP"];
+const COTISATION_TYPES = [
+  { key: "URSSAF", label: "URSSAF" },
+  { key: "Retraite", label: "Retraite complémentaire" },
+  { key: "Prévoyance", label: "Prévoyance" },
+];
+const COTISATION_TYPES_BTP = [
+  { key: "PRO BTP", label: "PRO BTP" },
+  { key: "CIBTP", label: "CIBTP" },
+];
 const NAF_SECTORS = [
   [/^41|^42|^43/, "batiment"],
   [/^55|^56/, "restauration"],
@@ -150,7 +158,88 @@ const ACTIVITE_KEYWORDS = [
   { secteurId: "sante", keywords: ["sante", "santé", "medecin", "médecin", "infirmier", "pharmacie"] },
   { secteurId: "agriculture", keywords: ["agriculture", "agricole", "viticulture", "elevage", "élevage"] },
 ];
-const FORME_JURIDIQUE_CHECKLIST_ITEMS = {};
+const FORME_JURIDIQUE_CHECKLIST_ITEMS = {
+  EI: [
+    { id: "identite_regime", label: "Vérifier l'identité de l'exploitant, l'activité et le régime fiscal/social" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les principaux comptes de bilan / résultat" },
+    { id: "declarations", label: "Vérifier les déclarations fiscales et sociales liées à l'activité" },
+    { id: "cotisations_tns", label: "Contrôler les cotisations sociales du dirigeant selon son statut" },
+  ],
+  EURL: [
+    { id: "statuts", label: "Relire les statuts et vérifier les évolutions de l'associé unique / gérant" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants d'associé" },
+    { id: "approbation_comptes", label: "Préparer / vérifier la décision d'approbation des comptes et l'affectation du résultat" },
+    { id: "depot_comptes", label: "Vérifier les formalités et le dépôt des comptes lorsque requis" },
+    { id: "remuneration", label: "Contrôler la rémunération du gérant et ses incidences sociales / fiscales" },
+  ],
+  SARL: [
+    { id: "statuts", label: "Relire les statuts, la répartition du capital et les mandats des gérants" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants d'associé" },
+    { id: "ago", label: "Préparer / vérifier l'assemblée annuelle, l'approbation des comptes et l'affectation du résultat" },
+    { id: "depot_comptes", label: "Vérifier les formalités et le dépôt des comptes lorsque requis" },
+    { id: "conventions", label: "Contrôler les conventions réglementées lorsqu'elles existent" },
+    { id: "remuneration", label: "Contrôler la rémunération des gérants et les charges sociales associées" },
+  ],
+  SAS: [
+    { id: "statuts", label: "Relire les statuts, la gouvernance et les mandats des dirigeants" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants d'associé" },
+    { id: "decision_annuelle", label: "Préparer / vérifier la décision annuelle d'approbation des comptes et l'affectation du résultat" },
+    { id: "depot_comptes", label: "Vérifier les formalités et le dépôt des comptes lorsque requis" },
+    { id: "conventions", label: "Contrôler les conventions réglementées lorsqu'elles existent" },
+    { id: "remuneration", label: "Contrôler la rémunération du président / dirigeants et les charges associées" },
+  ],
+  SASU: [
+    { id: "statuts", label: "Relire les statuts et vérifier les décisions de l'associé unique" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants d'associé" },
+    { id: "decision_annuelle", label: "Préparer / vérifier la décision annuelle d'approbation des comptes et l'affectation du résultat" },
+    { id: "depot_comptes", label: "Vérifier les formalités et le dépôt des comptes lorsque requis" },
+    { id: "conventions", label: "Contrôler les conventions réglementées lorsqu'elles existent" },
+    { id: "remuneration", label: "Contrôler la rémunération du président et les charges associées" },
+  ],
+  SCI: [
+    { id: "statuts", label: "Relire les statuts, les associés et les pouvoirs du ou des gérants" },
+    { id: "comptes_annuels", label: "Réviser les comptes et les comptes courants d'associé selon le régime et les obligations du dossier" },
+    { id: "resultat_fiscal", label: "Vérifier la détermination et la déclaration du résultat fiscal (IR / IS selon le régime)" },
+    { id: "decision_annuelle", label: "Préparer / vérifier la décision ou l'assemblée annuelle prévue par les statuts" },
+    { id: "immobilier", label: "Contrôler les biens, loyers, emprunts, charges et opérations immobilières" },
+  ],
+  SCM: [
+    { id: "statuts", label: "Relire les statuts, les associés et les règles de répartition des charges" },
+    { id: "comptes_annuels", label: "Réviser les comptes et la répartition des charges entre associés" },
+    { id: "decision_annuelle", label: "Vérifier les décisions / assemblées prévues par les statuts" },
+    { id: "conventions", label: "Contrôler les conventions et flux entre la SCM et ses associés" },
+  ],
+  SELARL: [
+    { id: "statuts", label: "Relire les statuts, les associés et la gouvernance de la société d'exercice" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants d'associé" },
+    { id: "decision_annuelle", label: "Préparer / vérifier l'approbation des comptes et l'affectation du résultat" },
+    { id: "depot_comptes", label: "Vérifier les formalités et le dépôt des comptes lorsque requis" },
+    { id: "remuneration", label: "Contrôler la rémunération des dirigeants et les cotisations correspondantes" },
+    { id: "reglementation", label: "Vérifier les points réglementaires propres à la profession et à la structure" },
+  ],
+  SA: [
+    { id: "statuts", label: "Relire les statuts, la gouvernance et les mandats des dirigeants" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants" },
+    { id: "ago", label: "Préparer / vérifier l'assemblée annuelle, l'approbation des comptes et l'affectation du résultat" },
+    { id: "depot_comptes", label: "Vérifier les formalités et le dépôt des comptes lorsque requis" },
+    { id: "conventions", label: "Contrôler les conventions réglementées et les rapports requis" },
+    { id: "cac", label: "Vérifier les obligations liées au commissaire aux comptes lorsqu'elles s'appliquent" },
+  ],
+  SNC: [
+    { id: "statuts", label: "Relire les statuts, les associés et les pouvoirs de gestion" },
+    { id: "comptes_annuels", label: "Réviser les comptes annuels et les comptes courants d'associé" },
+    { id: "decision_annuelle", label: "Vérifier les décisions / assemblées prévues par les statuts" },
+    { id: "resultat_fiscal", label: "Contrôler le traitement fiscal du résultat selon le régime applicable" },
+    { id: "conventions", label: "Contrôler les opérations et conventions entre associés et société" },
+  ],
+  Association: [
+    { id: "statuts", label: "Relire les statuts, l'objet, la gouvernance et les délégations" },
+    { id: "comptes_annuels", label: "Réviser les comptes et le suivi des ressources / subventions" },
+    { id: "assemblee", label: "Préparer / vérifier l'assemblée annuelle et les procès-verbaux selon les statuts" },
+    { id: "fiscalite", label: "Vérifier la situation fiscale de l'association et les éventuelles activités lucratives" },
+    { id: "subventions", label: "Contrôler les conventions, subventions et justificatifs lorsqu'ils existent" },
+  ],
+};
 const HOLDING_CHECKLIST_ITEMS = [];
 
 const T = {
@@ -771,6 +860,16 @@ async function insertTeamMemberRemote(member) {
 }
 
 
+async function updateSuperAdminTeamMemberRemote(id, patch) {
+  const { data, error } = await supabase.rpc("super_admin_update_team_member", {
+    p_team_id: id,
+    p_patch: patch || {},
+  });
+  if (error) { console.error("Erreur mise à jour Super Admin :", error.message); return false; }
+  return !!data;
+}
+
+
 async function updateTeamMemberRemote(id, patch) {
   // Validation d'un compte en attente : passage obligatoire par le RPC sécurisé.
   // Un nouveau compte n'a pas encore de portefeuille, donc un UPDATE RLS classique
@@ -855,24 +954,16 @@ async function deletePortefeuilleRemote(id) {
 
 
 async function loadNotificationsFromSupabase(teamId) {
-  if (!teamId) return [];
-  const { data, error } = await supabase.from("notifications").select("*").eq("destinataire_id", teamId).order("created_at", { ascending: false }).limit(30);
-  if (error) { console.error("Erreur chargement notifications :", error.message); return []; }
-  return data || [];
+  return fetchProductNotifications({ limit: 30 });
 }
-
 
 async function insertNotificationRemote(n) {
-  const { error } = await supabase.from("notifications").insert(n);
-  if (error) console.error("Erreur création notification :", error.message);
+  return insertProductNotification(n);
 }
-
 
 async function markNotificationReadRemote(id) {
-  const { error } = await supabase.from("notifications").update({ lu: true }).eq("id", id);
-  if (error) console.error("Erreur notification :", error.message);
+  return markProductNotificationRead(id);
 }
-
 
 async function loadOrganismesSociauxRemote(portefeuilleId, clientId = null) {
   return loadOrganismesSociaux(portefeuilleId, clientId);
@@ -998,6 +1089,8 @@ function filterByRole(clients, me, roleFilter) {
 
 function filterClients(clients, search, roleFilter, me, regimeFilter, statutFilter = "actif") {
   let out = filterByRole(clients, me, roleFilter || "Tous");
+  // Les dossiers placés en corbeille restent stockés mais sont exclus de toutes les vues métier.
+  out = out.filter((c) => !c.corbeilleDossier);
   if (statutFilter === "actif") out = out.filter((c) => (c.statutDossier || "actif") === "actif");
   else if (statutFilter === "transfert") out = out.filter((c) => c.statutDossier === "transfert");
   else if (statutFilter === "inactif") out = out.filter((c) => c.statutDossier === "inactif");
@@ -1287,4 +1380,4 @@ function exportPlanningToICS(tasks, clientById) {
 }
 
 
-export { TvaAutomation, T, PALETTE, SEED_AIDES_SECTEUR, SECTEURS_ACTIVITE, TVA_PERIODICITES, TVA_PERIODICITE_LABELS, REGIMES_TVA, REGIMES_TVA_LABELS, MOIS_ORDER, MOIS_FULL, QUARTER_END_MONTHS, DASHBOARD_CHART_COLORS, PLANNING_FILTERS, PLANNING_HOURS, PLANNING_SLOT_H, TASK_PRIORITE_TONE, PAYMENT_STATUS_OPTIONS, MISSION_EXCEP_TYPES, MISSION_EXCEP_STATUTS, MISSION_EXCEP_STATUT_LABELS, RESILIATION_INITIATEURS, RESILIATION_MOTIFS, ACCES_CATEGORIES, REPRISE_PIECES, ROLE_FILTER_OPTIONS, STATUT_FILTER_OPTIONS, COLLAB_SECTIONS, ACTIVITY_TYPE_LABELS, NOVACAB_MAIL_TEMPLATES, MISSION_GROUPS, MISSION_ALL_KEYS, CHECKLIST_STATUS_ORDER, buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetchSecteurNews, loadSecteurContentFromSupabase, upsertSecteurContentRemote, getFormeJuridiqueItems, normalizeText, classifyNaf, classifyActivite, currentMonthKey, previousMonthKey, migrateClients, effectiveTvaStatus, tvaTone, tvaStatusLabel, computeFiscalEvents, computeEcheanceAlerts, taskBucket, loadClientsFromSupabase, insertClientRemote, updateClientRemote, deleteClientRemote, invokeDemoFunction, ensureCurrentUserTeamRemote, loadTeamFromSupabase, loadMyContractStatusRemote, acceptMyCabinetContractRemote, insertTeamMemberRemote, updateTeamMemberRemote, deleteTeamMemberRemote, loadPortefeuillesFromSupabase, insertPortefeuilleRemote, archivePortefeuilleRemote, deletePortefeuilleRemote, loadNotificationsFromSupabase, insertNotificationRemote, markNotificationReadRemote, loadOrganismesSociauxRemote, insertOrganismeSocialRemote, updateOrganismeSocialRemote, deleteOrganismeSocialRemote, loadCollaboratorProfileRemote, upsertCollaboratorProfileRemote, formatMailAmount, buildNovacabMail, isTvaLate, seuilEffectifAlert, missionCompletion, isBilanLate, computeCounts, filterByRole, filterClients, buildDistribution, inferLegalForm, inferCategorieFiscale, toneColors, uid, downloadOrganismesTemplate, odCycle, odTone, odLabel, bankCycle, bankTone, bankLabel, isBtpClient, cotisationTypesFor, planningBucket, icsEscape, icsDateTime, icsDateTimePlusMinutes, buildPlanningICS, exportPlanningToICS, exportTvaDeadlinesToExcel, importTvaDeadlinesFromExcel };
+export { TvaAutomation, T, PALETTE, SEED_AIDES_SECTEUR, SECTEURS_ACTIVITE, TVA_PERIODICITES, TVA_PERIODICITE_LABELS, REGIMES_TVA, REGIMES_TVA_LABELS, MOIS_ORDER, MOIS_FULL, QUARTER_END_MONTHS, DASHBOARD_CHART_COLORS, PLANNING_FILTERS, PLANNING_HOURS, PLANNING_SLOT_H, TASK_PRIORITE_TONE, PAYMENT_STATUS_OPTIONS, MISSION_EXCEP_TYPES, MISSION_EXCEP_STATUTS, MISSION_EXCEP_STATUT_LABELS, RESILIATION_INITIATEURS, RESILIATION_MOTIFS, ACCES_CATEGORIES, REPRISE_PIECES, ROLE_FILTER_OPTIONS, STATUT_FILTER_OPTIONS, COLLAB_SECTIONS, ACTIVITY_TYPE_LABELS, NOVACAB_MAIL_TEMPLATES, MISSION_GROUPS, MISSION_ALL_KEYS, CHECKLIST_STATUS_ORDER, buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetchSecteurNews, loadSecteurContentFromSupabase, upsertSecteurContentRemote, getFormeJuridiqueItems, normalizeText, classifyNaf, classifyActivite, currentMonthKey, previousMonthKey, migrateClients, effectiveTvaStatus, tvaTone, tvaStatusLabel, computeFiscalEvents, computeEcheanceAlerts, taskBucket, loadClientsFromSupabase, insertClientRemote, updateClientRemote, deleteClientRemote, invokeDemoFunction, ensureCurrentUserTeamRemote, loadTeamFromSupabase, loadMyContractStatusRemote, acceptMyCabinetContractRemote, insertTeamMemberRemote, updateTeamMemberRemote, updateSuperAdminTeamMemberRemote, deleteTeamMemberRemote, loadPortefeuillesFromSupabase, insertPortefeuilleRemote, archivePortefeuilleRemote, deletePortefeuilleRemote, loadNotificationsFromSupabase, insertNotificationRemote, markNotificationReadRemote, loadOrganismesSociauxRemote, insertOrganismeSocialRemote, updateOrganismeSocialRemote, deleteOrganismeSocialRemote, loadCollaboratorProfileRemote, upsertCollaboratorProfileRemote, formatMailAmount, buildNovacabMail, isTvaLate, seuilEffectifAlert, missionCompletion, isBilanLate, computeCounts, filterByRole, filterClients, buildDistribution, inferLegalForm, inferCategorieFiscale, toneColors, uid, downloadOrganismesTemplate, odCycle, odTone, odLabel, bankCycle, bankTone, bankLabel, isBtpClient, cotisationTypesFor, planningBucket, icsEscape, icsDateTime, icsDateTimePlusMinutes, buildPlanningICS, exportPlanningToICS, exportTvaDeadlinesToExcel, importTvaDeadlinesFromExcel };

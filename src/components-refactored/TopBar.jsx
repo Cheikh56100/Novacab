@@ -32,17 +32,22 @@ function TopBar({ search, setSearch, saveStatus, me, meRole, meColor, cabinetNam
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const searchResults = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return [];
+    const score = (c) => {
+      const fields = [c.nom, c.siren, c.formeJuridique, c.activite, c.contact?.contactNom, c.contact?.email, c.contact?.telephone];
+      const values = fields.map(v => String(v || "").toLowerCase());
+      return values.reduce((n, v, i) => n + (v.includes(q) ? (i === 0 ? 5 : 1) : 0), 0);
+    };
+    return (clients || []).filter(c => !c.corbeilleDossier).map(c => ({ c, score: score(c) })).filter(x => x.score > 0).sort((a,b) => b.score - a.score || a.c.nom.localeCompare(b.c.nom)).slice(0, 8).map(x => x.c);
+  }, [clients, search]);
+
   const handleSearchKeyDown = (e) => {
     if (e.key === "Escape") { setSearch(""); setSearchOpen(false); e.currentTarget.blur(); return; }
     if (e.key !== "Enter") return;
-    const q = search.trim().toLowerCase();
-    if (!q) return;
-    // APRÈS
-const matches = clients.filter((c) => c.nom.toLowerCase().includes(q) || String(c.siren || "").includes(q));
-    if (matches.length >= 1) {
-      onOpenClient(matches[0].id);
-      setSearch("");
-      setSearchOpen(false);
+    if (searchResults.length >= 1) {
+      onOpenClient(searchResults[0].id); setSearch(""); setSearchOpen(false);
     }
   };
 
@@ -63,7 +68,7 @@ const list = q ? clients.filter((c) => c.nom.toLowerCase().includes(q) || String
   const toolIcons = [
     { key: "tva", icon: Receipt, title: "TVA — CA3/CA12", onClick: () => onNav("tva") },
     { key: "bilans", icon: FileWarning, title: "Bilans", onClick: () => onNav("bilans") },
-    { key: "acomptes", icon: Landmark, title: "Acomptes IS / CFE", onClick: () => onNav("acomptes") },
+    { key: "acomptes", icon: Landmark, title: "Impôts & taxes — IS / CFE", onClick: () => onNav("acomptes") },
     { key: "age", icon: Building2, title: "AGE / AGO", onClick: () => onNav("age") },
     { key: "mission", icon: ClipboardCheck, title: "Dossiers en accueil", onClick: () => onNav("mission") },
     { key: "fiscal", icon: CalendarDays, title: "Suivi fiscal", onClick: () => onNav("fiscal") },
@@ -152,14 +157,18 @@ const list = q ? clients.filter((c) => c.nom.toLowerCase().includes(q) || String
                 placeholder="Rechercher un dossier, un SIREN…"
                 className="input-field !rounded-full !py-1.5 !pl-8 !pr-16 !bg-app text-xs w-full" />
               <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[9.5px] font-mono text-inkmuted bg-card border border-line rounded px-1.5 py-0.5">Échap</kbd>
+              {searchResults.length > 0 && <div style={{ position:"absolute", top:34, left:0, right:0, background:T.card, border:`1px solid ${T.line}`, borderRadius:12, boxShadow:T.shadowLg, zIndex:40, padding:5 }}>
+                {searchResults.map(c => <div key={c.id} className="hoverRow clickable" onMouseDown={(ev)=>ev.preventDefault()} onClick={()=>{onOpenClient(c.id);setSearch("");setSearchOpen(false)}} style={{padding:"7px 8px",borderRadius:8,fontSize:11.5,display:"flex",justifyContent:"space-between",gap:8}}>
+                  <span style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nom}</span><span style={{fontFamily:T.mono,fontSize:9.5,color:T.inkMuted,flexShrink:0}}>{c.siren || c.formeJuridique || "Dossier"}</span>
+                </div>)}
+              </div>}
             </div>
           ) : (
-            <button onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 0); }} title="Rechercher (⌘K)"
-              className="topIconBtn hidden sm:inline-flex mr-1" aria-label="Rechercher">
+            <button type="button" onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 0); }} title="Rechercher (⌘K)"
+              className="topIconBtn inline-flex mr-1" aria-label="Rechercher">
               <Search size={16} strokeWidth={1.9} />
             </button>
           )}
-          <button className="sm:hidden topIconBtn" title="Rechercher" onClick={() => setSearchOpen((s) => !s)}><Search size={16} strokeWidth={1.9} /></button>
 
           <div className="relative hidden md:block">
             <button onClick={() => setNotifOpen((s) => !s)} title="Notifications" className="topIconBtn"><Bell size={16} strokeWidth={1.9} />

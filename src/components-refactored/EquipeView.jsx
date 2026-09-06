@@ -131,6 +131,7 @@ function EquipeView({ team, portefeuilles, clients, myRole, isAdmin, myPortefeui
                       <option value="expert">Expert</option>
                       <option value="chef_mission">Chef de mission</option>
                       <option value="gestionnaire_paie">Gestionnaire de paie</option>
+                      <option value="admin">Admin</option>
                     </select>
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       <button onClick={() => setValidating(null)} style={{ padding: "7px 12px", borderRadius: 9, border: `1px solid ${T.line}`, background: "none", cursor: "pointer", fontSize: 11.5 }}>Annuler</button>
@@ -183,6 +184,7 @@ function EquipeView({ team, portefeuilles, clients, myRole, isAdmin, myPortefeui
                 <option value="expert">Expert</option>
                 <option value="chef_mission">Chef de mission</option>
                 <option value="gestionnaire_paie">Gestionnaire de paie</option>
+                <option value="admin">Admin</option>
               </select>
               <select value={newPortefeuille} onChange={(e) => setNewPortefeuille(e.target.value)} style={inputStyle}>
                 <option value="">Aucun portefeuille</option>
@@ -221,7 +223,7 @@ function EquipeView({ team, portefeuilles, clients, myRole, isAdmin, myPortefeui
                     <option value="expert">Expert</option>
                     <option value="chef_mission">Chef de mission</option>
                     <option value="gestionnaire_paie">Gestionnaire de paie</option>
-                    {t.role === "admin" && <option value="admin">Admin</option>}
+                    <option value="admin">Admin</option>
                   </select>
                 ) : (
                   <span style={{ fontSize: 11, fontWeight: 600, color: T.navy, background: T.navySoft, padding: "3px 9px", borderRadius: 999 }}>{ROLE_LABELS[t.role] || t.role}</span>

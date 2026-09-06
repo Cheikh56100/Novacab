@@ -8,8 +8,9 @@ function Panel({ title, children, right, index = 0 }) {
   return (
     <Reveal index={index}>
       <div className="card p-4 md:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm md:text-[15px] font-bold text-ink m-0">{title}</h3>{right}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h3 className="text-sm md:text-[15px] font-bold text-ink m-0 min-w-0 leading-5">{title}</h3>
+          {right && <div className="shrink-0">{right}</div>}
         </div>{children}
       </div>
     </Reveal>

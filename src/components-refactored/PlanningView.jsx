@@ -60,12 +60,12 @@ function PlanningView({ tasks, clients, me, onUpdate, onOpenClient }) {
   return (
     <div>
       <Reveal>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+        <div className="planning-header" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
           <div>
             <h1 style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 700, color: T.ink, margin: 0 }}>Mon planning</h1>
             <p style={{ color: T.inkMuted, fontSize: 12.5, margin: "4px 0 0" }}>Glissez une tâche sur un créneau pour la planifier, {me}.</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="planning-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setWeekOffset((w) => w - 1)} style={navBtnStyle}><ChevronLeft size={15} /></button>
             <span style={{ fontFamily: T.serif, fontWeight: 600, fontSize: 12.5, color: T.navy, minWidth: 150, textAlign: "center" }}>
               Semaine du {fmtFR(isoOf(weekStart))}
@@ -80,7 +80,7 @@ function PlanningView({ tasks, clients, me, onUpdate, onOpenClient }) {
         </div>
       </Reveal>
 
-      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14, marginTop: 16, alignItems: "start" }}>
+      <div className="planning-layout" style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14, marginTop: 16, alignItems: "start" }}>
         {/* ---------- À planifier ---------- */}
         <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radius, padding: 12, boxShadow: T.shadowSm }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, marginBottom: 8 }}>

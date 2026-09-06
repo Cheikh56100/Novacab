@@ -203,6 +203,12 @@ function BilanTab({ client, onUpdate, meRole }) {
   const echeance = getBilanEcheance(client.dateCloture);
   const statut = getBilanStatut(b, client.dateCloture);
   const enRetard = echeance && todayISO() > echeance && !b.transmis;
+  const honoraires = client.honoraires || {};
+  const billingPeriod = honoraires.bilanPeriodicite || honoraires.facturationPeriodicite || "annuel";
+  const periodCount = { annuel: 1, semestriel: 2, trimestriel: 4, mensuel: 12 }[billingPeriod] || 1;
+  const billingDates = Array.isArray(honoraires.bilanDates) ? honoraires.bilanDates : [];
+  const setBilling = (patchFields) => onUpdate(client.id, { honoraires: { ...honoraires, ...patchFields } });
+  const billingDateCount = periodCount;
 
   return (
     <div>
@@ -222,7 +228,40 @@ function BilanTab({ client, onUpdate, meRole }) {
         </div>
       </div>
 
-      {/* 2) Étapes d'avancement */}
+      {/* 2) Facturation du dossier — source de vérité partagée avec l'Administration */}
+      <Panel title="Honoraires & facturation du bilan">
+        <FieldRow label="Montant du bilan HT">
+          <input type="number" min="0" step="0.01" value={honoraires.bilanMontantHT ?? ""} onChange={(e) => setBilling({ bilanMontantHT: e.target.value })}
+            placeholder="Ex. 1 500" style={{ fontFamily: T.mono, fontSize: 12, padding: "7px 9px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, width: 180 }} />
+        </FieldRow>
+        <FieldRow label="Montant du bilan TTC">
+          <input type="number" min="0" step="0.01" value={honoraires.bilanMontantTTC ?? ""} onChange={(e) => setBilling({ bilanMontantTTC: e.target.value })}
+            placeholder="Ex. 1 800" style={{ fontFamily: T.mono, fontSize: 12, padding: "7px 9px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, width: 180 }} />
+        </FieldRow>
+        <FieldRow label="Périodicité de paiement">
+          <select value={billingPeriod} onChange={(e) => setBilling({ bilanPeriodicite: e.target.value })}
+            style={{ fontSize: 12, padding: "7px 9px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card }}>
+            <option value="mensuel">Mensuel</option><option value="trimestriel">Trimestriel</option><option value="semestriel">Semestriel</option><option value="annuel">Annuel</option>
+          </select>
+        </FieldRow>
+        <FieldRow label="Dates de facturation (optionnelles)">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {Array.from({ length: billingDateCount }).map((_, i) => (
+              <input key={i} type="date" value={billingDates[i] || ""} onChange={(e) => { const next = [...billingDates]; next[i] = e.target.value; setBilling({ bilanDates: next }); }}
+                style={{ fontFamily: T.mono, fontSize: 11.5, padding: "6px 7px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card }} />
+            ))}
+          </div>
+        </FieldRow>
+        <FieldRow label="Montant déjà payé">
+          <input type="number" min="0" step="0.01" value={honoraires.bilanPaye ?? client.bilanPaye ?? ""} onChange={(e) => setBilling({ bilanPaye: e.target.value })}
+            placeholder="0" style={{ fontFamily: T.mono, fontSize: 12, padding: "7px 9px", borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, width: 180 }} />
+        </FieldRow>
+        <div style={{ marginTop: 8, padding: "9px 11px", borderRadius: 9, background: T.accentSoft || "#f3f6fa", fontSize: 11, color: T.inkMuted }}>
+          La fin du bilan alimente automatiquement le <strong>Tableau des bilans</strong> de l'Administration. La périodicité et les dates servent à calculer les échéances de facturation.
+        </div>
+      </Panel>
+
+      {/* 3) Étapes d'avancement */}
       <Panel title="Étapes d'avancement">
         <FieldRow label="Révision comptable">
           <div style={{ display: "flex", gap: 6 }}>

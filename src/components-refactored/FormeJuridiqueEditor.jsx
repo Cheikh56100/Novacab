@@ -44,6 +44,10 @@ function FormeJuridiqueEditor({ client, onUpdate }) {
 
   return (
     <div>
+      <div style={{ padding: "12px 14px", border: `1px solid ${T.line}`, borderRadius: 12, background: T.paper, marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: T.navy }}>Ce que NOVACAB vous propose de vérifier</div>
+        <div style={{ fontSize: 11.5, color: T.inkMuted, lineHeight: 1.55, marginTop: 4 }}>La checklist est adaptée à la forme juridique du dossier. Elle sert de fil conducteur pour la revue annuelle ; les obligations exactes dépendent du dossier, des statuts et des seuils applicables.</div>
+      </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <input type="number" placeholder="Année" value={newYear} onChange={(e) => setNewYear(e.target.value)} style={{ width: 100, ...inputStyle, padding: "8px 10px" }} />
         <button onClick={addYear} style={{ display: "flex", alignItems: "center", gap: 6, background: T.navy, color: "#fff", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}><Plus size={14} /> Ajouter cet exercice</button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { canAccessView, canAccessAccountSection } from "../utils/access.js";
 
 /**
  * Navigation state for the cabinet workspace.
@@ -13,7 +14,11 @@ export function useNavigationState({ canViewOrganismesSociaux, myRole }) {
     }
   }, []);
 
-  const initialView = savedNavigation.view === "analysis-financiere" || savedNavigation.view === "sector-kpis" ? "applications" : (savedNavigation.view || "dashboard");
+  const isManagement = myRole === "admin" || myRole === "expert";
+  const requestedInitialView = savedNavigation.view === "analysis-financiere" || savedNavigation.view === "sector-kpis"
+    ? "applications"
+    : (savedNavigation.view || (isManagement ? "administration" : "dashboard"));
+  const initialView = canAccessView(myRole, requestedInitialView) ? requestedInitialView : "dashboard";
   const [view, setView] = useState(initialView);
   const [mailClientId, setMailClientId] = useState(null);
   const [tvaAutoClientId, setTvaAutoClientId] = useState(null);
@@ -33,9 +38,26 @@ export function useNavigationState({ canViewOrganismesSociaux, myRole }) {
   const [viewHistory, setViewHistory] = useState(initialHistory);
 
   useEffect(() => {
+    // Le rôle est parfois disponible quelques millisecondes après le montage.
+    // Une fois connu, on applique le dernier espace utilisé, ou Administration
+    // par défaut pour Admin / Expert sur une première connexion.
+    if (!isManagement) {
+      if (view === "administration" || view === "permissions-matrix") setView("dashboard");
+      return;
+    }
+    const savedWorkspace = savedNavigation.workspace;
+    if (savedWorkspace === "admin" && view !== "administration" && view !== "permissions-matrix") {
+      setView("administration");
+    } else if (!savedNavigation.view && view === "dashboard") {
+      setView("administration");
+    }
+  }, [myRole]);
+
+  useEffect(() => {
     try {
       localStorage.setItem("novacab-navigation", JSON.stringify({
         view,
+        workspace: (view === "administration" || view === "permissions-matrix") ? "admin" : "workspace",
         openClientTabs,
         activeClientTab,
         viewHistory,
@@ -65,14 +87,16 @@ export function useNavigationState({ canViewOrganismesSociaux, myRole }) {
   const goHome = useCallback(() => setActiveClientTab(null), []);
 
   const openAccountSection = useCallback((section) => {
+    if (!canAccessAccountSection(myRole, section)) return;
     setAccountSection(section);
     setAccountMenuOpen(false);
     setActiveClientTab(null);
     setViewHistory((h) => (view.startsWith("account-") ? h : [...h, view]));
     setView(`account-${section}`);
-  }, [view]);
+  }, [view, myRole]);
 
   const navTo = useCallback((nextView) => {
+    if (!canAccessView(myRole, nextView)) return;
     if (nextView === "acces-organismes" && !canViewOrganismesSociaux(myRole)) return;
     setViewHistory((h) => (nextView === view ? h : [...h, view]));
     setView(nextView);
@@ -89,11 +113,18 @@ export function useNavigationState({ canViewOrganismesSociaux, myRole }) {
       return;
     }
     setViewHistory((h) => {
-      if (!h.length) return h;
-      setView(h[h.length - 1]);
-      return h.slice(0, -1);
+      const nextHistory = [...h];
+      while (nextHistory.length) {
+        const previous = nextHistory.pop();
+        if (canAccessView(myRole, previous)) {
+          setView(previous);
+          return nextHistory;
+        }
+      }
+      setView("dashboard");
+      return [];
     });
-  }, [activeClientTab]);
+  }, [activeClientTab, myRole]);
 
   return {
     view, setView,

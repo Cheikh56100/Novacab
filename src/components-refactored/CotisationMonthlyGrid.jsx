@@ -9,16 +9,25 @@ const { T } = Shared;
 function CotisationMonthlyGrid({ client, onUpdate }) {
   const rev = client.revision || {};
   const cotisMois = rev.cotisMois || {};
-  const types = cotisationTypesFor(client);
+  const types = cotisationTypesFor(client).map((t) => ({
+    ...t,
+    // Compatibilité avec les anciennes données : le libellé doit rester visible
+    // même si seul la clé de l'organisme a été enregistrée.
+    label: t.label || t.name || t.organisme || t.key || "Cotisation",
+  }));
   const cycleCell = (typeKey, mois) => {
     const monthsObj = cotisMois[typeKey] || {};
     onUpdate(client.id, { revision: { ...rev, cotisMois: { ...cotisMois, [typeKey]: { ...monthsObj, [mois]: bankCycle(monthsObj[mois]) } } } });
   };
   return (
     <div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(150px, 190px) 1fr", gap: 8, alignItems: "center", padding: "0 4px 7px", borderBottom: `1px solid ${T.line}`, marginBottom: 9 }}>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", fontWeight: 800, color: T.inkMuted }}>Organisme / cotisation</div>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", fontWeight: 800, color: T.inkMuted }}>Suivi mensuel</div>
+      </div>
       {types.map((t) => (
-        <div key={t.key} style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: T.inkSoft, marginBottom: 6 }}>{t.label}</div>
+        <div key={t.key} style={{ display: "grid", gridTemplateColumns: "minmax(150px, 190px) 1fr", gap: 8, alignItems: "start", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: T.navy, padding: "7px 4px", minHeight: 30, display: "flex", alignItems: "center" }}>{t.label || t.key || "Cotisation"}</div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {MOIS_ORDER.map((m) => (
               <button key={m} className="clickable" onClick={() => cycleCell(t.key, m)} style={{ background: "none", border: `1px solid ${T.line}`, borderRadius: 8, padding: "6px 4px", minWidth: 50, textAlign: "center" }}>

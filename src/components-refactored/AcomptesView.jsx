@@ -21,7 +21,7 @@ function AcomptesView({ clients, search, roleFilter, setRoleFilter, me, onUpdate
 const cfeConcerned = filtered.filter((c) => Number(c.cfe?.montantN1) > 3000);
   return (
     <div>
-      <Reveal><h1 style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 700, color: T.ink, margin: "0 0 6px" }}>Acomptes IS &amp; CFE</h1></Reveal>
+      <Reveal><h1 style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 700, color: T.ink, margin: "0 0 6px" }}>Impôts &amp; taxes</h1></Reveal>
       <p style={{ color: T.inkMuted, fontSize: 12.5, marginTop: 0, marginBottom: 18 }}>Dossiers dont l'impôt N-1 dépasse 3 000 €.</p>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
         <button onClick={() => exportAcomptesToExcel([...isConcerned, ...cfeConcerned.filter((c) => !isConcerned.includes(c))])} className="btn-secondary !py-2">

@@ -1,5 +1,6 @@
-import { X, Check, Plus, ChevronDown, History, Trash2, RotateCcw } from "lucide-react";
+import { X, Check, Plus, ChevronDown, History, Trash2, RotateCcw, Shield } from "lucide-react";
 import React from "react";
+import { createAdministrationRequest, ADMIN_REQUEST_TYPES, ADMIN_REQUEST_PRIORITIES } from "../services/administrationWorkflow.js";
 import * as Core from "./core.js";
 const { buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetchSecteurNews, loadSecteurContentFromSupabase, upsertSecteurContentRemote, getFormeJuridiqueItems, normalizeText, classifyNaf, classifyActivite, currentMonthKey, previousMonthKey, migrateClients, effectiveTvaStatus, tvaTone, tvaStatusLabel, computeFiscalEvents, computeEcheanceAlerts, taskBucket, loadClientsFromSupabase, insertClientRemote, updateClientRemote, deleteClientRemote, invokeDemoFunction, ensureCurrentUserTeamRemote, loadTeamFromSupabase, loadMyContractStatusRemote, acceptMyCabinetContractRemote, insertTeamMemberRemote, updateTeamMemberRemote, deleteTeamMemberRemote, loadPortefeuillesFromSupabase, insertPortefeuilleRemote, archivePortefeuilleRemote, deletePortefeuilleRemote, loadNotificationsFromSupabase, insertNotificationRemote, markNotificationReadRemote, loadOrganismesSociauxRemote, insertOrganismeSocialRemote, updateOrganismeSocialRemote, deleteOrganismeSocialRemote, loadCollaboratorProfileRemote, upsertCollaboratorProfileRemote, formatMailAmount, buildNovacabMail, isTvaLate, seuilEffectifAlert, missionCompletion, isBilanLate, computeCounts, filterByRole, filterClients, buildDistribution, inferLegalForm, inferCategorieFiscale, toneColors, uid, downloadOrganismesTemplate, odCycle, odTone, odLabel, bankCycle, bankTone, bankLabel, isBtpClient, cotisationTypesFor, planningBucket, icsEscape, icsDateTime, icsDateTimePlusMinutes, buildPlanningICS, exportPlanningToICS, TVA_PERIODICITES, TVA_PERIODICITE_LABELS } = Core;
 import { Reveal } from "./Reveal.jsx";
@@ -30,6 +31,7 @@ import { ClientAccessRightsTab } from "./ClientAccessRightsTab.jsx";
 import { RevisionTab } from "./RevisionTab.jsx";
 import { Shared } from "./shared.js";
 const { T, canViewOrganismesSociaux, canEditOrganismesSociaux } = Shared;
+import { canAccessClientTab } from "../utils/access.js";
 const { useState, useEffect } = React;
 
 
@@ -89,12 +91,14 @@ function ClientEditorPage({
     { id: "tickets", label: "Tickets" }, { id: "reunions", label: "Réunions" }, { id: "droits", label: "Droits d'accès" }, { id: "personnalise", label: "Champs personnalisés" },
     { id: "checklists", label: "Checklists DA / DP" },
     { id: "infos", label: "Infos générales" }, { id: "contact", label: "Fiche contact" }, { id: "facturationElectronique", label: "Facturation électronique" },
-    { id: "tva", label: "TVA" }, { id: "bilan", label: "Bilan" }, { id: "acomptes", label: "Acomptes" },
+    { id: "tva", label: "TVA" }, { id: "bilan", label: "Bilan" }, { id: "acomptes", label: "Impôts & taxes" },
     { id: "age", label: "AGE / AGO" }, { id: "formeJuridique", label: "Forme juridique" }, { id: "revision", label: "Révision" },
     { id: "acces", label: "Accès & codes" }, ...(canViewOrganismesSociaux(meRole) ? [{ id: "accesSociaux", label: "Accès organismes sociaux" }] : []),
     { id: "social", label: "Suivi social" }, { id: "suivi", label: "Demandes & pièces" }, { id: "rentabilite", label: "Temps & rentabilité" },
     { id: "validation", label: "Validation" }, { id: "notes", label: "Notes" }, { id: "historique", label: "Historique" },
   ];
+  const visibleTabs = tabs.filter((item) => canAccessClientTab(meRole, item.id));
+  useEffect(() => { if (!visibleTabs.some((item) => item.id === tab)) setTab("overview"); }, [tab, meRole]);
   // V33 — navigation volontairement réduite : quatre accès principaux.
   // Les fonctions spécialisées restent disponibles dans les groupes, sans multiplier les onglets visibles.
   const navGroups = [
@@ -107,9 +111,23 @@ function ClientEditorPage({
     { id: "fiscalite", label: "Fiscalité", items: ["tva", "acomptes", "bilan"] },
     { id: "sociale", label: "Sociale", items: ["social", ...(canViewOrganismesSociaux(meRole) ? ["accesSociaux"] : [])] },
     { id: "more", label: "Plus", items: ["formeJuridique", "age", "validation", "notes", "historique"] },
-  ];
-  const tabLabel = (id) => tabs.find((t) => t.id === id)?.label || id;
+  ].map((group) => ({ ...group, items: group.items.filter((id) => canAccessClientTab(meRole, id)) })).filter((group) => group.items.length);
+  const tabLabel = (id) => visibleTabs.find((t) => t.id === id)?.label || id;
   const [openClientNav, setOpenClientNav] = useState(null);
+  const [adminRequestOpen, setAdminRequestOpen] = useState(false);
+  const [adminRequestType, setAdminRequestType] = useState(ADMIN_REQUEST_TYPES.ADMIN_BLOCKER);
+  const [adminRequestPriority, setAdminRequestPriority] = useState(ADMIN_REQUEST_PRIORITIES.NORMAL);
+  const [adminRequestDescription, setAdminRequestDescription] = useState("");
+  const [adminRequestBusy, setAdminRequestBusy] = useState(false);
+  const submitAdministrationRequest = async () => {
+    setAdminRequestBusy(true);
+    try {
+      await createAdministrationRequest({ portefeuilleId, clientId: client.id, type: adminRequestType, priority: adminRequestPriority, description: adminRequestDescription, metadata: { source: "dossier" } });
+      setAdminRequestDescription(""); setAdminRequestOpen(false);
+      alert("La demande a été transmise à l’administration.");
+    } catch (error) { alert(error?.message || "Impossible de transmettre la demande."); }
+    finally { setAdminRequestBusy(false); }
+  };
   const activeNavGroup = navGroups.find((g) => g.items.includes(tab));
   return (
     <div>
@@ -154,6 +172,7 @@ function ClientEditorPage({
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {!isAdmin && <button type="button" onClick={() => setAdminRequestOpen(v => !v)} style={{ display:"flex", alignItems:"center", gap:6, background:T.amberSoft, border:`1px solid ${T.line}`, borderRadius:9, padding:"7px 11px", cursor:"pointer", color:T.amber, fontSize:11, fontWeight:700 }}><Shield size={13}/> Demander une intervention admin</button>}
             {dirty && (
               <>
                 <span style={{ fontSize: 11, color: T.amber, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
@@ -209,6 +228,15 @@ function ClientEditorPage({
             </button>
           </div>
         </div>
+        {adminRequestOpen && !isAdmin && <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/50 p-3" style={{maxWidth:520, marginLeft:"auto"}}>
+          <div className="text-[11px] font-extrabold text-ink mb-2">Nouvelle demande à l’administration</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select value={adminRequestType} onChange={e=>setAdminRequestType(e.target.value)} className="border border-line rounded-lg bg-app px-2.5 py-2 text-[10.5px]"><option value="mission_exceptionnelle">Mission exceptionnelle</option><option value="resiliation">Résiliation</option><option value="demande_lettre">Lettre / document</option><option value="blocage_administratif">Blocage administratif</option><option value="document_manquant">Document manquant</option><option value="autre">Autre demande</option></select>
+            <select value={adminRequestPriority} onChange={e=>setAdminRequestPriority(e.target.value)} className="border border-line rounded-lg bg-app px-2.5 py-2 text-[10.5px]"><option value="normal">Priorité normale</option><option value="haute">Priorité haute</option><option value="urgente">Urgente</option></select>
+          </div>
+          <textarea value={adminRequestDescription} onChange={e=>setAdminRequestDescription(e.target.value)} placeholder="Expliquez l’intervention attendue…" rows={3} className="mt-2 w-full border border-line rounded-lg bg-app px-2.5 py-2 text-[10.5px] resize-none"/>
+          <div className="flex justify-end gap-2 mt-2"><button type="button" onClick={()=>setAdminRequestOpen(false)} className="px-2.5 py-1.5 rounded-lg border border-line text-[10px] font-bold">Annuler</button><button type="button" disabled={adminRequestBusy || !portefeuilleId} onClick={submitAdministrationRequest} className="px-2.5 py-1.5 rounded-lg bg-accent text-white text-[10px] font-bold">{adminRequestBusy ? "Transmission…" : "Transmettre"}</button></div>
+        </div>}
       </Reveal>
       {/* V17 — Cockpit dossier : lecture immédiate avant d'entrer dans les rubriques */}
       <Reveal>
@@ -273,25 +301,25 @@ function ClientEditorPage({
       </div>
       {!canModifyClient && <div style={{ width: "100%", maxWidth: 1120, marginBottom: 10, padding: "9px 12px", borderRadius: 10, background: T.paper, border: `1px solid ${T.line}`, color: T.inkMuted, fontSize: 11 }}>Dossier en <b style={{ color: T.ink }}>lecture seule</b> selon les droits d’accès configurés.</div>}
       <div style={{ width: "100%", maxWidth: 1120, background: T.card, border: `1px solid ${T.line}`, borderRadius: T.radius, padding: "22px 24px", boxShadow: T.shadowSm }}>
-        {tab === "overview" && <ClientOverviewTab client={client} tasks={tasks} team={team} onOpenTab={setTab} />}
+        {tab === "overview" && <ClientOverviewTab client={client} tasks={tasks} team={team} onOpenTab={setTab} isAdmin={isAdmin || meRole === "expert"} onUpdate={onUpdate} />}
         {tab === "infos" && <InfosTab client={draft} team={team} onUpdate={patchDraft} setView={setView} />}
         {tab === "contact" && <ContactTab client={draft} onUpdate={patchDraft} />}
         {tab === "facturationElectronique" && <FacturationElectroniqueTab client={draft} onUpdate={patchDraft} />}
         {tab === "tva" && <TvaTab client={draft} onUpdate={patchDraft} onOpenTvaAuto={onOpenTvaAuto} />}
         {tab === "bilan" && <BilanTab client={draft} onUpdate={patchDraft} meRole={meRole} />}
         {tab === "acomptes" && <AcomptesTab client={draft} onUpdate={patchDraft} />}
-        {tab === "age" && <AgeAgoEditor client={draft} onUpdate={patchDraft} />}
-        {tab === "formeJuridique" && <FormeJuridiqueEditor client={draft} onUpdate={patchDraft} />}
+        {tab === "age" && canAccessClientTab(meRole, "age") && <AgeAgoEditor client={draft} onUpdate={patchDraft} />}
+        {tab === "formeJuridique" && canAccessClientTab(meRole, "formeJuridique") && <FormeJuridiqueEditor client={draft} onUpdate={patchDraft} />}
 {tab === "revision" && <RevisionTab client={draft} onUpdate={patchDraft} onPersistUpdate={onUpdate} setView={setView} />}
         {tab === "mission" && <MissionTab client={draft} onUpdate={patchDraft} />}
         {tab === "tickets" && <ClientTicketsTab client={client} tasks={tasks} team={team} onCreate={onCreateTask} onUpdate={onUpdateTask} onComplete={onCompleteTask} portefeuilleId={portefeuilleId} />}
         {tab === "reunions" && <ClientMeetingsTab client={client} me={me} meId={meId} portefeuilleId={portefeuilleId} team={team} onUpdate={onUpdate} onCreateTask={canModifyClient ? onCreateTask : null} />}
-        {tab === "droits" && <ClientAccessRightsTab client={client} team={team} meRole={meRole} meId={meId} onUpdate={onUpdate} />}
+        {tab === "droits" && canAccessClientTab(meRole, "droits") && <ClientAccessRightsTab client={client} team={team} meRole={meRole} meId={meId} onUpdate={onUpdate} />}
         {tab === "personnalise" && <CustomFieldsTab client={draft} onUpdate={patchDraft} canConfigure={["admin","super_admin","expert","chef_mission"].includes(meRole)} />}
         {tab === "checklists" && <ClientChecklistsTab client={draft} year={new Date().getFullYear()} onUpdate={patchDraft} />}
-        {tab === "acces" && <AccesTab client={draft} onUpdate={patchDraft} canEdit={canEditOrganismesSociaux(meRole)} />}
+        {tab === "acces" && canAccessClientTab(meRole, "acces") && <AccesTab client={draft} onUpdate={patchDraft} canEdit={canEditOrganismesSociaux(meRole)} />}
         {tab === "accesSociaux" && canViewOrganismesSociaux(meRole) && <AccesOrganismesSociauxTab client={draft} portefeuilleId={portefeuilleId} meId={meId} canEdit={canEditOrganismesSociaux(meRole)} />}
-        {tab === "social" && <SocialTab client={draft} onUpdate={patchDraft} />}
+        {tab === "social" && canAccessClientTab(meRole, "social") && <SocialTab client={draft} onUpdate={patchDraft} />}
         {tab === "suivi" && <DemandesPiecesTab client={draft} onUpdate={patchDraft} />}
         {tab === "rentabilite" && <RentabiliteTab client={draft} onUpdate={patchDraft} />}
         {tab === "validation" && <ValidationDossierTab client={draft} onUpdate={patchDraft} me={me} />}

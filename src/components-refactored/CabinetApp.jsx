@@ -1,9 +1,12 @@
 import { Loader2, Eye } from "lucide-react";
 import React from "react";
 import { useNavigationState } from "../hooks/useNavigationState.js";
+import { canAccessView, canAccessAccountSection } from "../utils/access.js";
 import { useCabinetDataSync } from "../hooks/useCabinetDataSync.js";
+import { auditProductAction, scheduleFollowups } from "../services/cabinetState.js";
+import { dispatchClientEvents } from "../services/workflowEvents.js";
 import * as Core from "./core.js";
-const { TvaAutomation, buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetchSecteurNews, loadSecteurContentFromSupabase, upsertSecteurContentRemote, getFormeJuridiqueItems, normalizeText, classifyNaf, classifyActivite, currentMonthKey, previousMonthKey, migrateClients, effectiveTvaStatus, tvaTone, tvaStatusLabel, computeFiscalEvents, computeEcheanceAlerts, taskBucket, loadClientsFromSupabase, insertClientRemote, updateClientRemote, deleteClientRemote, invokeDemoFunction, ensureCurrentUserTeamRemote, loadTeamFromSupabase, loadMyContractStatusRemote, acceptMyCabinetContractRemote, insertTeamMemberRemote, updateTeamMemberRemote, deleteTeamMemberRemote, loadPortefeuillesFromSupabase, insertPortefeuilleRemote, archivePortefeuilleRemote, deletePortefeuilleRemote, loadNotificationsFromSupabase, insertNotificationRemote, markNotificationReadRemote, loadOrganismesSociauxRemote, insertOrganismeSocialRemote, updateOrganismeSocialRemote, deleteOrganismeSocialRemote, loadCollaboratorProfileRemote, upsertCollaboratorProfileRemote, formatMailAmount, buildNovacabMail, isTvaLate, seuilEffectifAlert, missionCompletion, isBilanLate, computeCounts, filterByRole, filterClients, buildDistribution, inferLegalForm, inferCategorieFiscale, toneColors, uid, downloadOrganismesTemplate, odCycle, odTone, odLabel, bankCycle, bankTone, bankLabel, isBtpClient, cotisationTypesFor, planningBucket, icsEscape, icsDateTime, icsDateTimePlusMinutes, buildPlanningICS, exportPlanningToICS } = Core;
+const { TvaAutomation, buildGoogleNewsRssUrl, buildProxyUrl, fetchRssFeed, fetchSecteurNews, loadSecteurContentFromSupabase, upsertSecteurContentRemote, getFormeJuridiqueItems, normalizeText, classifyNaf, classifyActivite, currentMonthKey, previousMonthKey, migrateClients, effectiveTvaStatus, tvaTone, tvaStatusLabel, computeFiscalEvents, computeEcheanceAlerts, taskBucket, loadClientsFromSupabase, insertClientRemote, updateClientRemote, deleteClientRemote, invokeDemoFunction, ensureCurrentUserTeamRemote, loadTeamFromSupabase, loadMyContractStatusRemote, acceptMyCabinetContractRemote, insertTeamMemberRemote, updateTeamMemberRemote, updateSuperAdminTeamMemberRemote, deleteTeamMemberRemote, loadPortefeuillesFromSupabase, insertPortefeuilleRemote, archivePortefeuilleRemote, deletePortefeuilleRemote, loadNotificationsFromSupabase, insertNotificationRemote, markNotificationReadRemote, loadOrganismesSociauxRemote, insertOrganismeSocialRemote, updateOrganismeSocialRemote, deleteOrganismeSocialRemote, loadCollaboratorProfileRemote, upsertCollaboratorProfileRemote, formatMailAmount, buildNovacabMail, isTvaLate, seuilEffectifAlert, missionCompletion, isBilanLate, computeCounts, filterByRole, filterClients, buildDistribution, inferLegalForm, inferCategorieFiscale, toneColors, uid, downloadOrganismesTemplate, odCycle, odTone, odLabel, bankCycle, bankTone, bankLabel, isBtpClient, cotisationTypesFor, planningBucket, icsEscape, icsDateTime, icsDateTimePlusMinutes, buildPlanningICS, exportPlanningToICS } = Core;
 import { CollaboratorSpaceView } from "./CollaboratorSpaceView.jsx";
 import { MailTypesView } from "./MailTypesView.jsx";
 import { ApplicationsView } from "./ApplicationsView.jsx";
@@ -17,7 +20,11 @@ import { Sidebar } from "./Sidebar.jsx";
 import { AccountPage } from "./AccountPage.jsx";
 import { TopBar } from "./TopBar.jsx";
 import { PilotageView } from "./PilotageView.jsx";
+import { PermissionsMatrixView } from "./PermissionsMatrixView.jsx";
+import { AdministrationView } from "./AdministrationView.jsx";
+import { AdministrationRequestsView } from "./AdministrationRequestsView.jsx";
 import { ArchivesView } from "./ArchivesView.jsx";
+import { CorbeilleView } from "./CorbeilleView.jsx";
 import { Dashboard } from "./Dashboard.jsx";
 import { ClientsRegistry } from "./ClientsRegistry.jsx";
 import { ClientEditorPage } from "./ClientEditorPage.jsx";
@@ -28,7 +35,6 @@ import { BilansView } from "./BilansView.jsx";
 import { AcomptesView } from "./AcomptesView.jsx";
 import { ResiliationsView } from "./ResiliationsView.jsx";
 import { MissionsExceptionnellesView } from "./MissionsExceptionnellesView.jsx";
-import { AidesSecteurView } from "./AidesSecteurView.jsx";
 import { LegalServicesView } from "./LegalServicesView.jsx";
 import { AgeAgoView } from "./AgeAgoView.jsx";
 import { RevisionView } from "./RevisionView.jsx";
@@ -50,6 +56,8 @@ import { SuperAdminTechnicalStatus } from "./SuperAdminTechnicalStatus.jsx";
 import { EquipeView } from "./EquipeView.jsx";
 import { AddClientModal } from "./AddClientModal.jsx";
 import { Shared } from "./shared.js";
+import { subscribeProductNotifications } from "../services/notifications.js";
+import { fetchAdministrationRequests, createAdministrationRequest, updateAdministrationRequest, subscribeAdministrationRequests } from "../services/administrationWorkflow.js";
 const { T, S, PALETTE, SEED_AIDES_SECTEUR, supabase, fetchTasks, createTask, updateTask, completeTask, archiveTask, deleteTask, subscribeTasks, runAutomation, fetchLegalRequests, createLegalRequest, updateLegalRequest, deleteLegalRequest, migrateLocalLegalRequests, logActivity, activityMessages, filterEditablePatch, CURRENT_YEAR, withAnnualSnapshot, rolloverAnnualClient, getExerciseYear, RAW_SEED_CLIENTS, displayCabinetName, canViewOrganismesSociaux } = Shared;
 const { useState, useEffect, useMemo, useCallback, useRef, Suspense } = React;
 
@@ -70,6 +78,7 @@ function CabinetApp({ session, onLogout }) {
   const [contractChecked, setContractChecked] = useState(false);
   const [collaboratorProfile, setCollaboratorProfile] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [administrationRequests, setAdministrationRequests] = useState([]);
   const [saveStatus, setSaveStatus] = useState("idle");
   const [appNotice, setAppNotice] = useState(null);
   const showAppNotice = useCallback((message, tone = "error") => {
@@ -87,6 +96,7 @@ function CabinetApp({ session, onLogout }) {
   const isSuperAdmin = myRole === "super_admin";
   const isAdmin = myRole === "admin" || isSuperAdmin;
   const navigation = useNavigationState({ canViewOrganismesSociaux, myRole });
+  const [administrationTab, setAdministrationTab] = useState("pilotage");
   const {
     view, setView, mailClientId, setMailClientId, tvaAutoClientId, setTvaAutoClientId,
     search, setSearch, roleFilter, setRoleFilter, regimeFilter, setRegimeFilter,
@@ -112,6 +122,39 @@ function CabinetApp({ session, onLogout }) {
     const unsubscribe = subscribeTasks(reload);
     return () => { cancelled = true; unsubscribe(); };
   }, []);
+
+  // Centre de demandes : persistant et partagé entre collaborateurs et direction.
+  useEffect(() => {
+    if (!myPortefeuilleId || !myRow?.id) return undefined;
+    let cancelled = false;
+    const reload = async () => {
+      try {
+        const rows = await fetchAdministrationRequests({ portefeuilleId: myPortefeuilleId, management: myRole === "admin" || myRole === "expert" });
+        if (!cancelled) setAdministrationRequests(rows);
+      } catch (error) {
+        console.warn("Centre de demandes indisponible :", error?.message || error);
+        if (!cancelled) setAdministrationRequests([]);
+      }
+    };
+    reload();
+    const unsubscribe = subscribeAdministrationRequests(myPortefeuilleId, reload);
+    return () => { cancelled = true; unsubscribe(); };
+  }, [myPortefeuilleId, myRow?.id, myRole]);
+
+  const handleCreateAdministrationRequest = useCallback(async (input) => {
+    const created = await createAdministrationRequest(input);
+    setAdministrationRequests((rows) => [created, ...rows]);
+    return created;
+  }, []);
+
+  const handleUpdateAdministrationRequest = useCallback(async (id, patch) => {
+    try {
+      const updated = await updateAdministrationRequest(id, patch);
+      setAdministrationRequests((rows) => rows.map((r) => r.id === id ? updated : r));
+    } catch (error) {
+      showAppNotice(error?.message || "Impossible de mettre à jour la demande administrative.");
+    }
+  }, [showAppNotice]);
 
   // V31 — moteur intelligent : transforme les données existantes (tickets +
   // imports financiers) en alertes persistées. Aucun accès ni donnée métier n'est modifié.
@@ -196,11 +239,8 @@ function CabinetApp({ session, onLogout }) {
     let cancelled = false;
     const reload = () => loadNotificationsFromSupabase(myRow.id).then((rows) => { if (!cancelled) setNotifications(rows); });
     reload();
-    const channel = supabase
-      .channel(`notifs-${myRow.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `destinataire_id=eq.${myRow.id}` }, () => reload())
-      .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(channel); };
+    const unsubscribe = subscribeProductNotifications(() => reload());
+    return () => { cancelled = true; unsubscribe(); };
   }, [myRow?.id]);
 
   const markNotificationRead = useCallback((id) => {
@@ -248,6 +288,9 @@ function CabinetApp({ session, onLogout }) {
     if (!current) return;
 
     const requestedUnarchive = patch?.statutDossier === "actif" && current.statutDossier === "inactif";
+    if (patch?.dossierAnnuelChecklist || patch?.missionStatus || patch?.mission) {
+      auditProductAction("checklists", "update", { entityType: "client", entityId: id, metadata: { source: "checklist" } });
+    }
     const safePatch = filterEditablePatch(myRole, requestedUnarchive && myRole !== "admin" ? { ...patch, statutDossier: current.statutDossier } : patch);
     const baseVersion = Math.max(1, Number(current._version || 1));
     let updated = { ...current, ...safePatch, _version: baseVersion + 1 };
@@ -305,6 +348,7 @@ function CabinetApp({ session, onLogout }) {
       pendingLocalIds.current.delete(id);
       setSaveStatus("saved");
       logActivity({ clientId: id, portefeuilleId: latest.portefeuilleId || null, type: "modification", message: `Dossier ${latest.nom || id} modifié par ${me || "utilisateur"}`, auteurId: myRow?.id || null });
+      dispatchClientEvents({ previous: current, next: latest, portefeuilleId: latest.portefeuilleId || latest.portefeuille_id || myPortefeuilleId || null, auteurId: myRow?.id || null }).catch((error) => console.warn("Workflow événementiel :", error?.message || error));
       setTimeout(() => setSaveStatus("idle"), 1200);
     });
     clientSaveQueues.current.set(id, task);
@@ -312,6 +356,7 @@ function CabinetApp({ session, onLogout }) {
   }, [me, myRow?.id, myRole, showAppNotice]);
 
   const addClient = useCallback((newClient) => {
+    if (!["admin","expert","chef_mission","collaborateur"].includes(myRole)) { showAppNotice("Votre rôle ne permet pas de créer un dossier client.", "warning"); return false; }
     const normalized = withAnnualSnapshot(newClient, CURRENT_YEAR());
     setClients((prev) => [...prev, normalized]);
     pendingLocalIds.current.add(normalized.id);
@@ -325,7 +370,7 @@ function CabinetApp({ session, onLogout }) {
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 1200);
     });
-  }, []);
+  }, [myRole, showAppNotice]);
   const archiveClient=useCallback(async(id)=>{const c=clients.find(x=>x.id===id);if(!c)return false;updateClient(id,{statutDossier:"inactif",archiveDossier:{date:new Date().toISOString(),par:myRow?.id||null}});return true},[clients,updateClient,myRow?.id]);
   const unarchiveClient=useCallback(async(id)=>{
     if(!isAdmin){ showAppNotice("Seul l'Admin peut désarchiver un dossier.", "warning"); return false; }
@@ -334,7 +379,30 @@ function CabinetApp({ session, onLogout }) {
     updateClient(id,{statutDossier:"actif",archiveDossier:null});
     return true;
   },[clients,isAdmin,updateClient,showAppNotice]);
-  const deleteClient = useCallback(async (id) => { if(!isAdmin){alert("La suppression définitive est réservée à l'Admin. Utilisez Archiver.");return false} const c=clients.find(x=>x.id===id);if(!c||!confirm(`Supprimer définitivement « ${c.nom} » ?`))return false;try{await deleteClientRemote(id);setClients(prev=>prev.filter(x=>x.id!==id));if(activeClientTab===id)setActiveClientTab(null);return true}catch(e){alert("Suppression impossible.");return false}},[clients,isAdmin,activeClientTab]);
+  const trashClient = useCallback(async (id) => {
+    if (!isAdmin) { showAppNotice("Seul l'Admin peut mettre un dossier à la corbeille.", "warning"); return false; }
+    const c = clients.find(x => x.id === id);
+    if (!c) return false;
+    updateClient(id, { corbeilleDossier: { date: new Date().toISOString(), par: myRow?.id || null } });
+    if (activeClientTab === id) setActiveClientTab(null);
+    return true;
+  }, [clients, isAdmin, myRow?.id, activeClientTab, updateClient, showAppNotice]);
+  const restoreClient = useCallback(async (id) => {
+    if (!isAdmin) { showAppNotice("Seul l'Admin peut restaurer un dossier.", "warning"); return false; }
+    const c = clients.find(x => x.id === id); if (!c?.corbeilleDossier) return false;
+    updateClient(id, { corbeilleDossier: null }); return true;
+  }, [clients, isAdmin, updateClient, showAppNotice]);
+  const deleteClientPermanently = useCallback(async (id) => {
+    if (!isAdmin) return false;
+    const c = clients.find(x => x.id === id);
+    if (!c || !c.corbeilleDossier || !confirm(`Supprimer définitivement « ${c.nom} » ?\n\nCette action est irréversible.`)) return false;
+    try { await deleteClientRemote(id); setClients(prev => prev.filter(x => x.id !== id)); if (activeClientTab === id) setActiveClientTab(null); return true; }
+    catch (e) { alert("Suppression impossible."); return false; }
+  }, [clients, isAdmin, activeClientTab]);
+  const trashClients = useMemo(() => {
+    if (!clients) return [];
+    return clients.filter(c => c.corbeilleDossier && (isAdmin || !myPortefeuilleId || c.portefeuilleId === myPortefeuilleId));
+  }, [clients, isAdmin, myPortefeuilleId]);
 
   // Import Excel/CSV : crée ou met à jour plusieurs fiches clients d'un coup.
   // Rapprochement par SIREN si renseigné, sinon par nom (insensible à la casse).
@@ -399,6 +467,7 @@ function CabinetApp({ session, onLogout }) {
   }, []);
 
   const renameTeamMember = useCallback((oldName, newName) => {
+    if (!canManageTeam) { showAppNotice("Action réservée aux rôles de management.", "warning"); return; }
     if (!newName.trim() || newName === oldName) return;
     const member = team.find((t) => t.nom === oldName);
     if (member) {
@@ -416,18 +485,19 @@ function CabinetApp({ session, onLogout }) {
       persistMany(next);
       return next;
     });
-  }, [team, persistMany]);
+  }, [team, persistMany, canManageTeam, showAppNotice]);
 
   // Ajout manuel réservé à l'Admin (les collaborateurs rejoignent normalement en s'inscrivant eux-mêmes) :
   // utile pour un contact externe sans compte, ou pour dépanner.
   const addTeamMember = useCallback((nom, portefeuilleId, role) => {
+    if (!isAdmin) { showAppNotice("Seul l’Admin peut ajouter manuellement un membre.", "warning"); return; }
     if (!nom.trim() || team.some((t) => t.nom === nom.trim())) return;
     const color = PALETTE[team.length % PALETTE.length];
     const member = { id: `t-${Date.now()}`, nom: nom.trim(), color, role: role || "collaborateur", statut: "actif", portefeuille_id: portefeuilleId || null };
     setTeam((prev) => [...prev, member]);
     pendingLocalTeamIds.current.add(member.id);
     insertTeamMemberRemote(member);
-  }, [team]);
+  }, [team, isAdmin, showAppNotice]);
 
 
   const refreshTeam = useCallback(async () => {
@@ -465,6 +535,7 @@ function CabinetApp({ session, onLogout }) {
   }, [isAdmin, refreshTeam]);
 
   const deleteTeamMember = useCallback((nom) => {
+    if (!canManageTeam) { showAppNotice("Action réservée aux rôles de management.", "warning"); return; }
     const member = team.find((t) => t.nom === nom);
     setTeam((prev) => prev.filter((t) => t.nom !== nom));
     if (member) {
@@ -481,22 +552,28 @@ function CabinetApp({ session, onLogout }) {
       persistMany(next);
       return next;
     });
-  }, [team, persistMany]);
+  }, [team, persistMany, canManageTeam, showAppNotice]);
 
   // Modification générique d'une fiche équipe : rôle, portefeuille, validation d'une
   // demande en attente (statut -> actif). Réservé côté base aux Experts/Chefs de
   // mission (sur leur propre portefeuille) et à l'Admin (partout) — voir RLS "team_update".
   const updateTeamMember = useCallback(async (id, patch) => {
+    if (!canManageTeam) { showAppNotice("Action réservée aux rôles de management.", "warning"); return false; }
+    const target = team.find(t => t.id === id);
+    if (!isAdmin && (patch?.role === "admin" || patch?.role === "expert" || target?.role === "admin" || target?.role === "super_admin")) { showAppNotice("Seul l’Admin peut gérer les comptes d’administration ou d’expertise.", "warning"); return false; }
     pendingLocalTeamIds.current.add(id);
-    const ok = await updateTeamMemberRemote(id, patch);
+    const ok = isSuperAdmin
+      ? await updateSuperAdminTeamMemberRemote(id, patch)
+      : await updateTeamMemberRemote(id, patch);
     pendingLocalTeamIds.current.delete(id);
     if (!ok) {
       showAppNotice("La validation n'a pas pu être enregistrée. Aucun accès n'a été activé.", "error");
       return false;
     }
     setTeam((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    if (isSuperAdmin) await refreshTeam();
     return true;
-  }, [showAppNotice]);
+  }, [showAppNotice, canManageTeam, isAdmin, isSuperAdmin, team, refreshTeam]);
 
   // Création d'un nouveau portefeuille : réservée au Super Admin
 const addPortefeuille = useCallback(async (nom, domaine) => {
@@ -569,10 +646,11 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
 
   const myClients = useMemo(() => {
     if (!clients || !me) return [];
-    if (isAdmin) return clients;
+    if (isAdmin) return clients.filter(c => !c.corbeilleDossier);
     // La visibilité applicative suit le portefeuille, puis l'affectation métier.
     // La même règle est renforcée côté RLS Supabase.
     return clients.filter((c) => {
+      if (c.corbeilleDossier) return false;
       if (myPortefeuilleId && c.portefeuilleId && c.portefeuilleId !== myPortefeuilleId) return false;
       const explicit = Array.isArray(c.accesDossier) ? c.accesDossier : [];
       // Les managers conservent la visibilité de leur portefeuille ; les autres
@@ -582,6 +660,12 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
       return c.collab === me || c.expert === me || c.chefMission === me || c.gestionnairePaie === me;
     });
   }, [clients, me, isAdmin, myPortefeuilleId]);
+
+  useEffect(() => {
+    const allowedIds = new Set(myClients.map((c) => String(c.id)));
+    setOpenClientTabs((tabs) => tabs.filter((t) => allowedIds.has(String(t.id))));
+    if (activeClientTab && !allowedIds.has(String(activeClientTab))) setActiveClientTab(null);
+  }, [myClients, activeClientTab]);
 
   const myTasks = useMemo(() => {
     if (!myClients.length) return [];
@@ -622,16 +706,15 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
   const handleCreateTask = useCallback(async (payload) => {
     const row = await createTask({ ...payload, portefeuille_id: payload.portefeuille_id || myPortefeuilleId || null, created_by: me });
     if (row) {
+      auditProductAction("tasks", "create", { entityType: "task", entityId: row.id, metadata: { client_id: row.client_id, priorite: row.priorite } });
+      if (row.date_echeance) scheduleFollowups("task", row.id, row.date_echeance, { label: row.nom });
       logActivity({ clientId: row.client_id, portefeuilleId: row.portefeuille_id, type: "tache", message: activityMessages.tacheCreee(row.nom), auteurId: myRow?.id });
       // Un ticket assigné doit prévenir immédiatement et visiblement son responsable.
       if (row.responsable_id) {
         const client = clients.find(c => String(c.id) === String(row.client_id));
         const deadline = row.date_echeance ? ` · échéance ${row.date_echeance}` : '';
-        insertNotificationRemote({
-          id: `n-${crypto?.randomUUID ? crypto.randomUUID() : Date.now()}`,
-          destinataire_id: row.responsable_id,
-          expediteur_id: myRow?.id || null,
-          client_id: row.client_id,
+        insertNotificationRemote({recipient_team_id: row.responsable_id,
+                    client_id: row.client_id,
           client_nom: client?.nom || '',
           type: 'ticket_assigne',
           message: `🎫 Nouveau ticket assigné : ${row.nom}${client?.nom ? ` — ${client.nom}` : ''}${deadline}`,
@@ -642,22 +725,50 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
   }, [myPortefeuilleId, me, myRow, clients]);
 
   const handleUpdateTask = useCallback(async (id, patch) => {
+    const existing = tasksDb.find(t => String(t.id) === String(id));
+    const manager = ["admin","expert","chef_mission"].includes(myRole);
+    if (!existing || (!manager && String(existing.responsable_id || "") !== String(myRow?.id || ""))) {
+      showAppNotice("Vous ne pouvez modifier que vos tâches affectées, sauf pour les rôles de management.", "warning");
+      return null;
+    }
     const row = await updateTask(id, patch);
+    if (row) auditProductAction("tasks", patch.statut === "termine" ? "complete" : "update", { entityType: "task", entityId: row.id, metadata: patch });
+    if (row?.date_echeance && Object.prototype.hasOwnProperty.call(patch, "date_echeance")) {
+      scheduleFollowups("task", row.id, row.date_echeance, { label: row.nom, client_id: row.client_id });
+    }
     if (row && patch.statut === "termine") {
       logActivity({ clientId: row.client_id, portefeuilleId: row.portefeuille_id, type: "tache", message: activityMessages.tacheTerminee(row.nom), auteurId: myRow?.id });
     }
     return row;
-  }, [myRow]);
+  }, [myRow, myRole, tasksDb, showAppNotice]);
 
-  const handleArchiveTask=useCallback(async(task)=>{if(!task?.id||task.isAuto)return null;const row=await archiveTask(task.id);if(row)setTasksDb(prev=>prev.map(t=>t.id===task.id?row:t));return row},[]);
+  const handleArchiveTask=useCallback(async(task)=>{
+    if(!task?.id||task.isAuto) return null;
+    if (!["admin","expert","chef_mission"].includes(myRole)) { showAppNotice("L’archivage des tâches est réservé au management.", "warning"); return null; }
+    const row=await archiveTask(task.id); if(row)setTasksDb(prev=>prev.map(t=>t.id===task.id?row:t)); return row;
+  },[myRole,showAppNotice]);
 
   const handleCompleteTask = useCallback(async (task) => {
+    const existing = tasksDb.find(t => String(t.id) === String(task?.id));
+    const manager = ["admin","expert","chef_mission"].includes(myRole);
+    if (!existing || (!manager && String(existing.responsable_id || "") !== String(myRow?.id || ""))) {
+      showAppNotice("Vous ne pouvez terminer que vos tâches affectées, sauf pour les rôles de management.", "warning");
+      return null;
+    }
     const row = await completeTask(task.id);
     if (row) {
+      auditProductAction("tasks", "complete", { entityType: "task", entityId: row.id });
       logActivity({ clientId: row.client_id, portefeuilleId: row.portefeuille_id, type: "tache", message: activityMessages.tacheTerminee(row.nom), auteurId: myRow?.id });
     }
     return row;
-  }, [myRow]);
+  }, [myRow, myRole, tasksDb, showAppNotice]);
+
+  const handleDeleteTask = useCallback(async (id) => {
+    if (!["admin","expert","chef_mission"].includes(myRole)) { showAppNotice("La suppression des tâches est réservée au management.", "warning"); return false; }
+    const ok = await deleteTask(id);
+    if (ok) setTasksDb(prev => prev.filter(t => String(t.id) !== String(id)));
+    return ok;
+  }, [myRole, showAppNotice]);
 
   const handleCreateLegal=useCallback(async(p)=>{const r=await createLegalRequest({...p,portefeuille_id:p.portefeuille_id||myPortefeuilleId||null,created_by:myRow?.id||null});if(r)setLegalRequests(x=>[r,...x.filter(a=>a.id!==r.id)]);return r},[myPortefeuilleId,myRow?.id]);
   const handleUpdateLegal=useCallback(async(id,p)=>{const r=await updateLegalRequest(id,p);if(r)setLegalRequests(x=>x.map(a=>a.id===id?r:a));return r},[]);
@@ -706,7 +817,7 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
   }
 
   const meColor = team.find((t) => t.nom === me)?.color || T.navy;
-  const activeClient = activeClientTab ? clients.find((c) => c.id === activeClientTab) || null : null;
+  const activeClient = activeClientTab ? myClients.find((c) => c.id === activeClientTab) || null : null;
 
   // Navigation métier déléguée au hook pour garder CabinetApp centré sur l’orchestration.\n\n  // Équipe "visible" pour les listes déroulantes (assigner un collaborateur/expert/chef
   // de mission à un dossier) : uniquement les comptes actifs de mon portefeuille — l'Admin,
@@ -724,7 +835,7 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
   return (
     <div style={S.appShell}>
       <GlobalStyle />
-      <Sidebar view={view} setView={(v) => navTo(v)} me={me} meRole={myRole} mePortefeuille={myPortefeuille} team={team}
+      <Sidebar view={view} setView={(v) => navTo(v)} administrationTab={administrationTab} setAdministrationTab={setAdministrationTab} me={me} meRole={myRole} mePortefeuille={myPortefeuille} team={team}
         onLogout={onLogout} counts={{ ...computeCounts(myClients), tachesActives: visibleTasksDb.filter((t) => t.statut !== "termine").length + autoTasksForPage.length }}
         collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed}
         mobileOpen={mobileMenuOpen} setMobileOpen={setMobileMenuOpen} />
@@ -755,7 +866,7 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
   meId={myRow?.id}
   portefeuilleId={myPortefeuilleId}
   onUpdate={updateClient}
-  onDelete={deleteClient}
+  onDelete={isAdmin ? trashClient : undefined}
   onArchive={archiveClient}
   onUnarchive={unarchiveClient}
   isAdmin={isAdmin}
@@ -770,6 +881,10 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
           ) : (
             <>
               {view === "pilotage" && <PilotageView clients={myClients} tasks={[...visibleTasksDb, ...autoTasksForPage]} team={visibleTeam} me={me} onOpenClient={openClientTab} onView={navTo} />}
+              {view === "permissions-matrix" && myRole === "admin" && <PermissionsMatrixView />}
+              {view === "administration" && (myRole === "admin" || myRole === "expert") && (
+                <AdministrationView clients={myClients} team={visibleTeam} tasks={visibleTasksDb} administrationRequests={administrationRequests} onUpdateAdministrationRequest={handleUpdateAdministrationRequest} onOpenClient={openClientTab} onNavigate={navTo} onUpdateClient={updateClient} activeTab={administrationTab} onTabChange={setAdministrationTab} setCollabQuickFilter={setCollabQuickFilter} setDashboardFilter={setDashboardFilter} />
+              )}
               {view.startsWith("account-") && (
                 <AccountPage section={view.replace("account-", "")} myRow={myRow} myPortefeuille={myPortefeuille} session={session} me={me} meRole={myRole}
                   cabinetName={displayCabinetName(myRow?.cabinet_nom || myPortefeuille?.nom)} onUpdateMember={updateTeamMember} onLogout={onLogout}
@@ -780,6 +895,7 @@ const addPortefeuille = useCallback(async (nom, domaine) => {
                 <Eye size={15} /> MODE DÉMO — données fictives. Ce compte est destiné à la démonstration de NOVACAB.
               </div>
             )}
+              {view === "demandes-administration" && !["admin","super_admin"].includes(myRole) && <AdministrationRequestsView requests={administrationRequests} clients={myClients} portefeuilleId={myPortefeuilleId} onOpenClient={openClientTab} onCreate={handleCreateAdministrationRequest} />}
               {view === "dashboard" && (
                 <Dashboard myClients={myClients} tasks={myTasks} me={me} meRole={myRole} team={visibleTeam}
                   cabinetName={displayCabinetName(myRow?.cabinet_nom || myPortefeuille?.nom)}
@@ -815,18 +931,14 @@ onImport={importClients} onAddClient={addClient} />
                     const dest = c.chefMission_id
                       ? team.find((t) => t.id === c.chefMission_id)
                       : (team.find((t) => t.nom === c.chefMission) || team.find((t) => t.role === "chef_mission" && (!c.portefeuilleId || t.portefeuille_id === c.portefeuilleId)));
-                    if (dest && dest.id !== myRow?.id) insertNotificationRemote({
-                      id: `n-${crypto?.randomUUID ? crypto.randomUUID() : Date.now()}`, destinataire_id: dest.id, expediteur_id: myRow?.id || null,
-                      client_id: c.id, client_nom: c.nom, type: "tva_fait",
+                    if (dest && dest.id !== myRow?.id) insertNotificationRemote({recipient_team_id: dest.id,                       client_id: c.id, client_nom: c.nom, type: "tva_fait",
                       message: `${me} a préparé la TVA de ${mois} pour ${c.nom} — à vérifier.`,
                     });
                   }
                   // Chef de mission confirme (Fait -> OK) -> notifie le collaborateur en retour
                   if (val === "OK" && previous === "FAIT" && c.collab && c.collab !== me) {
                     const dest = team.find((t) => t.nom === c.collab);
-                    if (dest) insertNotificationRemote({
-                      id: `n-${Date.now()}`, destinataire_id: dest.id, expediteur_id: myRow?.id || null,
-                      client_id: c.id, client_nom: c.nom, type: "tva_confirme",
+                    if (dest) insertNotificationRemote({recipient_team_id: dest.id,                       client_id: c.id, client_nom: c.nom, type: "tva_confirme",
                       message: `${me} a confirmé la TVA de ${mois} pour ${c.nom}.`,
                     });
                   }
@@ -835,9 +947,7 @@ onImport={importClients} onAddClient={addClient} />
                     const dest = c.chefMission_id
                       ? team.find((t) => t.id === c.chefMission_id)
                       : (team.find((t) => t.nom === c.chefMission) || team.find((t) => t.role === "chef_mission" && (!c.portefeuilleId || t.portefeuille_id === c.portefeuilleId)));
-                    if (dest && dest.id !== myRow?.id) insertNotificationRemote({
-                      id: `n-${crypto?.randomUUID ? crypto.randomUUID() : Date.now()}`, destinataire_id: dest.id, expediteur_id: myRow?.id || null,
-                      client_id: c.id, client_nom: c.nom, type: "tva_declaree",
+                    if (dest && dest.id !== myRow?.id) insertNotificationRemote({recipient_team_id: dest.id,                       client_id: c.id, client_nom: c.nom, type: "tva_declaree",
                       message: `${me} a déclaré la TVA de ${mois} pour ${c.nom}.`,
                     });
                   }
@@ -859,10 +969,7 @@ onImport={importClients} onAddClient={addClient} />
                   // qu'il soit invité à déclarer (contrôlé et validé) ou à corriger avant de déclarer (non validé).
                   if (c.collab && c.collab !== me) {
                     const dest = team.find((t) => t.nom === c.collab);
-                    if (dest) insertNotificationRemote({
-                      id: `n-${crypto?.randomUUID ? crypto.randomUUID() : Date.now()}`,
-                      destinataire_id: dest.id, expediteur_id: myRow?.id || null,
-                      client_id: c.id, client_nom: c.nom,
+                    if (dest) insertNotificationRemote({recipient_team_id: dest.id,                       client_id: c.id, client_nom: c.nom,
                       type: decision === "CONTROLE" ? "tva_confirme" : "tva_a_corriger",
                       message: decision === "CONTROLE"
                         ? `${me} a contrôlé et validé la TVA de ${mois} pour ${c.nom} — la déclaration peut être faite.`
@@ -882,7 +989,8 @@ onImport={importClients} onAddClient={addClient} />
               {view === "mails-types" && <MailTypesView clients={myClients} initialClientId={mailClientId} me={me} cabinetName={displayCabinetName(myRow?.cabinet_nom || myPortefeuille?.nom)} />}
               {view === "bilans" && <BilansView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} />}
               {view === "acomptes" && <AcomptesView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} />}
-              {view === "archives" && <ArchivesView clients={myClients} tasks={archiveTasksDb} isAdmin={isAdmin} onUnarchive={unarchiveClient} onOpenClient={openClientTab} />}
+              {view === "archives" && <ArchivesView clients={myClients} tasks={archiveTasksDb} isAdmin={isAdmin || myRole === "expert"} onUnarchive={unarchiveClient} onOpenClient={openClientTab} />}
+              {view === "corbeille" && (isAdmin || myRole === "expert") && <CorbeilleView clients={trashClients} isAdmin={isAdmin} onRestore={restoreClient} onDeletePermanently={deleteClientPermanently} onOpenClient={openClientTab} />}
               {view === "super-demandes" && isSuperAdmin && <LegalServicesView clients={clients} requests={legalRequests} onCreate={handleCreateLegal} onUpdate={handleUpdateLegal} onDelete={handleDeleteLegal} />}
               {view === "prestations-juridiques" && <LegalServicesView clients={myClients} requests={legalRequests} onCreate={handleCreateLegal} onUpdate={handleUpdateLegal} onDelete={handleDeleteLegal} />}
               {view === "age" && <AgeAgoView clients={myClients} search={search} roleFilter={roleFilter} setRoleFilter={setRoleFilter} me={me} onUpdate={updateClient} />}
@@ -904,7 +1012,7 @@ onImport={importClients} onAddClient={addClient} />
               {view === "mes-taches" && (
                 <TasksPage tasks={[...visibleTasksDb, ...autoTasksForPage]} clients={myClients} team={visibleTeam} me={me} myRow={myRow}
                   onCreate={handleCreateTask} onUpdate={handleUpdateTask} onComplete={handleCompleteTask} onArchive={handleArchiveTask}
-                  onDelete={deleteTask} onOpenClient={openClientTab} />
+                  onDelete={handleDeleteTask} onOpenClient={openClientTab} />
               )}
             {view === "planning" && (
               <PlanningView
@@ -928,9 +1036,6 @@ onImport={importClients} onAddClient={addClient} />
                   canManageTeam={canManageTeam}
                   onAdd={addTeamMember} onRename={renameTeamMember} onDelete={deleteTeamMember}
                   onUpdateMember={updateTeamMember} onAddPortefeuille={addPortefeuille} onArchivePortefeuille={archivePortefeuille} onDeletePortefeuille={deletePortefeuille} />
-              )}
-              {view === "aides-secteur" && (
-                <AidesSecteurView content={secteurContent || {}} canEdit={canManageTeam} onUpdate={updateSecteurContent} />
               )}
             </>
           )}
